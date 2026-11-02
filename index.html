@@ -1,0 +1,2295 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f0f0f6">
+<!-- Установка как приложение: манифест, иконки и поведение на iPhone -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Универ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- Шрифт Manrope подгружается из интернета; без интернета включится обычный системный -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Мой универ</title>
+<style>
+/* =========================================================
+   1. ЦВЕТА И ТЕМЫ
+   Все цвета лежат в переменных. Хочешь другой оттенок —
+   поменяй значение здесь, и поменяется весь сайт.
+   Две темы: светлая (по умолчанию) и тёмная.
+   ========================================================= */
+:root{
+  --bg:#f0f0f6;            /* фон страницы */
+  --card:#ffffff;          /* карточки */
+  --text:#1d1b2e;
+  --muted:#7b7993;         /* второстепенный текст */
+  --accent:#5a46f0;        /* главный цвет (кнопки, выделения) */
+  --accent-2:#8b78ff;      /* второй цвет для градиентов */
+  --accent-ink:#5a46f0;    /* акцентный цвет для текста и ссылок */
+  --on-accent:#ffffff;     /* текст на акцентном фоне */
+  --accent-soft:#ebe8ff;   /* бледная заливка акцентом */
+  --line:#e8e7f2;          /* тонкие линии */
+  --danger:#d93a4d;
+  --shadow-sm:0 6px 16px -12px rgba(60,40,180,.45);
+  --nav-bg:rgba(255,255,255,.88);
+  --nav-shadow:0 14px 32px -12px rgba(50,35,150,.40);
+  --folder-1:#8b78ff; --folder-2:#5a46f0;   /* цвета карточек-папок: верх и низ */
+  --hero:linear-gradient(135deg,#5b46f2 0%,#7d69ff 52%,#aca2ff 100%);
+  --glow:radial-gradient(70% 38% at 100% 0%,rgba(145,120,255,.42),transparent 70%),
+         radial-gradient(60% 34% at 0% 8%,rgba(125,175,255,.30),transparent 70%);
+}
+[data-theme="dark"]{
+  --bg:#0a0708;
+  --card:#171011;
+  --text:#f5ecec;
+  --muted:#a59799;
+  --accent:#b3203f;        /* красно-бордовый вместо синего */
+  --accent-2:#e0485f;
+  --accent-ink:#ff6f86;
+  --on-accent:#ffffff;
+  --accent-soft:#2c1418;
+  --line:#2b1d1f;
+  --danger:#ff7a7a;
+  --shadow-sm:none;
+  --nav-bg:rgba(23,16,17,.90);
+  --nav-shadow:0 14px 32px -12px rgba(0,0,0,.9);
+  --folder-1:#a42441; --folder-2:#5b101f;
+  --hero:linear-gradient(135deg,#2c0911 0%,#781430 52%,#c62e46 100%);
+  --glow:radial-gradient(70% 38% at 100% 0%,rgba(190,40,70,.36),transparent 70%),
+         radial-gradient(60% 34% at 0% 8%,rgba(120,20,45,.32),transparent 70%);
+}
+
+/* =========================================================
+   2. ОБЩЕЕ
+   ========================================================= */
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{
+  margin:0; color:var(--text);
+  background-color:var(--bg); background-image:var(--glow);
+  background-repeat:no-repeat; background-attachment:fixed;
+  font:16px/1.45 "Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:140px;
+}
+.wrap{max-width:720px; margin:0 auto; padding:12px 16px}
+h3{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:24px 0 8px}
+.empty{color:var(--muted); font-size:14px; margin:6px 2px}
+a{color:var(--accent-ink); font-weight:600}
+:focus-visible{outline:2px solid var(--accent-ink); outline-offset:2px}
+
+/* ---------- Шапка с градиентом и «стеклянными» плитками ---------- */
+.hero{
+  position:relative; overflow:hidden; color:#fff;
+  background:var(--hero); border-radius:28px;
+  padding:22px 20px 18px; margin:4px 0 18px;
+}
+.hero > *{position:relative; z-index:1}
+/* Блестящие «камушки» справа */
+.hero::before, .hero::after{
+  content:''; position:absolute; border-radius:50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,.85) 0, rgba(255,255,255,.30) 22%, rgba(255,255,255,.08) 52%, rgba(255,255,255,0) 70%),
+    rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.32);
+}
+.hero::before{width:170px; height:170px; right:-38px; top:-48px}
+.hero::after{width:86px; height:86px; right:104px; top:26px; opacity:.85}
+/* Круги медленно «плавают». Скорость: чем больше секунд, тем спокойнее. */
+@keyframes floatA{
+  0%  {transform:translate(0,0) rotate(0deg)}
+  33% {transform:translate(-9%,7%) rotate(4deg)}
+  66% {transform:translate(6%,13%) rotate(-3deg)}
+  100%{transform:translate(-4%,-6%) rotate(2deg)}
+}
+@keyframes floatB{
+  0%  {transform:translate(0,0) scale(1)}
+  30% {transform:translate(22%,-14%) scale(1.05)}
+  65% {transform:translate(-18%,10%) scale(.96)}
+  100%{transform:translate(10%,22%) scale(1.03)}
+}
+.hero::before{animation:floatA 22s ease-in-out infinite alternate}
+.hero::after {animation:floatB 16s ease-in-out -6s infinite alternate}
+/* Если в системе включено «уменьшить движение», круги стоят на месте */
+@media (prefers-reduced-motion:reduce){ .hero::before, .hero::after{animation:none} }
+.hero h1{margin:0; font-weight:800; font-size:clamp(28px,6vw,40px); line-height:1.1; letter-spacing:-.01em}
+.hero p{margin:6px 0 0; opacity:.88; font-weight:500}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px}
+.stat{
+  background:rgba(255,255,255,.17); border:1px solid rgba(255,255,255,.34);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  border-radius:18px; padding:10px 6px; text-align:center;
+}
+.stat b{display:block; font-size:22px; line-height:1.15; font-weight:800}
+.stat span{display:block; font-size:12px; opacity:.92; line-height:1.25}
+
+/* ---------- Плавающее меню-«таблетка» ---------- */
+nav{
+  position:fixed; z-index:5; left:12px; right:12px; max-width:520px; margin:0 auto;
+  bottom:calc(12px + env(safe-area-inset-bottom));
+  display:flex; gap:2px; padding:5px; border-radius:999px;
+  background:var(--nav-bg); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  box-shadow:var(--nav-shadow), 0 0 0 1px var(--line);
+}
+nav button{
+  flex:1 1 auto; min-height:44px; padding:10px 8px; border:0; border-radius:999px;
+  background:none; color:var(--muted); font:inherit; font-size:12.5px; font-weight:700; cursor:pointer;
+}
+nav button.on{background:var(--accent-soft); color:var(--accent-ink)}
+
+/* Круглая кнопка «+» */
+.fab{
+  position:fixed; right:18px; z-index:6;
+  bottom:calc(88px + env(safe-area-inset-bottom));
+  width:56px; height:56px; border-radius:50%; border:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--on-accent);
+  font-size:30px; line-height:1; cursor:pointer;
+  box-shadow:0 14px 26px -10px rgba(0,0,0,.55);
+}
+
+/* Кнопки и мелкие элементы: все «пилюлями» */
+.btn{
+  border:0; border-radius:999px; padding:12px 20px; font:inherit; font-weight:700; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--on-accent);
+}
+.btn.ghost{background:var(--accent-soft); color:var(--text)}
+.btn.danger{background:transparent; color:var(--danger); border:1px solid var(--danger)}
+.mini{
+  border:0; border-radius:999px; padding:2px 12px; min-height:34px; min-width:38px;
+  background:var(--accent-soft); color:var(--accent-ink); font:inherit; font-weight:700; cursor:pointer;
+}
+.seg{display:flex; gap:6px; margin:6px 0 4px; flex-wrap:wrap}
+.seg button{
+  min-height:40px; padding:6px 16px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--line); background:var(--card); color:var(--text); font:inherit; font-size:14px; font-weight:600;
+}
+.seg button.on{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--on-accent); border-color:transparent;
+}
+.note{
+  background:var(--accent-soft); border-radius:20px; padding:12px 14px;
+  margin:10px 0; font-size:14px; display:flex; gap:10px; align-items:center; justify-content:space-between;
+}
+
+/* =========================================================
+   3. РАСПИСАНИЕ
+   ========================================================= */
+.weeknav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:14px 0 4px}
+.weeknav b{font-size:16px; font-weight:800; text-align:center}
+.day h2{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--muted); margin:22px 0 4px;
+}
+.day.today h2{color:var(--accent-ink)}
+.day .date{font-weight:500; text-transform:none; letter-spacing:0; margin-left:8px}
+.dayoff{background:var(--accent-soft); border-radius:16px; padding:10px 14px; font-size:14px; font-weight:600; margin:8px 0}
+.item{
+  display:flex; gap:12px; align-items:center;
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow-sm);
+  border-radius:22px; padding:12px 14px; margin:8px 0; cursor:pointer;
+}
+.day.today .item{border-color:var(--accent)}
+.lesson .time{
+  min-width:56px; padding:6px 4px; text-align:center; font-weight:800; font-variant-numeric:tabular-nums;
+  background:var(--accent-soft); border-radius:14px;
+}
+.lesson .time small{display:block; color:var(--muted); font-weight:500}
+.bar{width:4px; align-self:stretch; border-radius:4px; background:var(--c)}
+.body{flex:1; display:flex; flex-direction:column; min-width:0}
+.body b{font-weight:700; overflow-wrap:anywhere}
+.body span{color:var(--muted); font-size:14px}
+.teacher{font-size:13px; color:var(--muted); margin-top:2px; overflow-wrap:anywhere}
+
+/* =========================================================
+   4. ЗАДАНИЯ
+   ========================================================= */
+.chk{
+  width:28px; height:28px; border-radius:50%; flex:none;
+  border:2px solid var(--muted); background:none; cursor:pointer; color:var(--on-accent);
+  font-size:15px; line-height:1;
+}
+.chk.on{background:linear-gradient(135deg,var(--accent),var(--accent-2)); border-color:transparent}
+.task.done .body b{text-decoration:line-through; color:var(--muted)}
+.chip{
+  display:inline-block; font-size:12px; font-weight:600; padding:1px 10px; border-radius:999px;
+  background:var(--accent-soft); margin-right:6px;
+}
+.late{color:var(--danger); font-weight:700}
+
+/* =========================================================
+   5. ПРЕДМЕТЫ: карточки-«папки»
+   ========================================================= */
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:26px 12px; margin-top:24px}
+.card{
+  position:relative; min-height:128px; padding:16px; cursor:pointer; color:#fff;
+  display:flex; flex-direction:column; justify-content:space-between; gap:18px;
+  background:linear-gradient(160deg,var(--folder-1),var(--folder-2));
+  border-radius:24px; box-shadow:0 16px 28px -18px rgba(0,0,0,.55);
+}
+/* «ушко» папки сверху слева */
+.card::before{
+  content:''; position:absolute; left:0; top:-12px; width:46%; height:26px;
+  background:var(--folder-1); border-radius:16px 16px 0 0;
+}
+.card b{font-weight:800; font-size:15px; line-height:1.25; padding-right:20px; overflow-wrap:break-word; hyphens:auto; -webkit-hyphens:auto}
+.card small{color:rgba(255,255,255,.85); font-size:12.5px; font-weight:500}
+.card .sdot{
+  position:absolute; top:14px; right:14px; width:14px; height:14px; border-radius:50%;
+  background:var(--c); box-shadow:0 0 0 3px rgba(255,255,255,.85);
+}
+.card .foot{display:flex; align-items:flex-end; justify-content:space-between; gap:8px}
+.card .go{
+  flex:none; width:32px; height:32px; border-radius:50%; display:grid; place-items:center;
+  background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); font-size:15px;
+}
+.dot{display:inline-block; width:12px; height:12px; border-radius:50%; background:var(--c); margin-right:8px}
+.subj-title{font-weight:800; font-size:24px; line-height:1.2; margin:16px 0 0}
+textarea,input,select{
+  width:100%; padding:11px 12px; border-radius:16px; font:inherit;
+  border:1px solid var(--line); background:var(--card); color:var(--text);
+}
+input[type=color]{padding:2px; height:44px}
+
+/* =========================================================
+   6. ОКНО РЕДАКТИРОВАНИЯ
+   ========================================================= */
+dialog{
+  border:0; border-radius:28px; padding:0; width:min(92vw,420px); max-height:92vh; overflow:auto;
+  background:var(--card); color:var(--text); box-shadow:0 30px 60px -20px rgba(0,0,0,.6);
+}
+dialog::backdrop{background:rgba(18,12,40,.5); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px)}
+dialog form{padding:20px; display:flex; flex-direction:column; gap:10px}
+dialog h3{margin:0 0 4px; font-size:20px; font-weight:800; text-transform:none; letter-spacing:0; color:var(--text)}
+dialog label{font-size:13px; font-weight:600; color:var(--muted); display:flex; flex-direction:column; gap:4px}
+dialog input, dialog select, dialog textarea{background:var(--bg)}
+dialog .row{
+  display:flex; gap:8px; justify-content:flex-end; margin-top:6px;
+  position:sticky; bottom:0; background:var(--card); padding:10px 0 2px;
+}
+
+/* =========================================================
+   6б. КАЛЕНДАРЬ
+   ========================================================= */
+.calnav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0 10px}
+.calnav b{font-weight:800; font-size:20px}
+.calgrid{display:grid; grid-template-columns:repeat(7, 1fr); gap:4px}
+.calh{text-align:center; font-size:12px; font-weight:700; color:var(--muted); padding:2px 0; text-transform:uppercase; letter-spacing:.04em}
+.cell{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  min-height:62px; padding:6px 2px; cursor:pointer; font:inherit; color:var(--text);
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+}
+.cell.out{opacity:.4}
+.cell.today{border-color:var(--accent)}
+.cell.sel{background:var(--accent-soft); border-color:var(--accent)}
+.cell .n{font-size:13px; font-weight:700; min-width:24px; height:24px; line-height:24px; text-align:center; border-radius:50%}
+.cell.today .n{background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--on-accent)}
+.blobs{display:flex; flex-wrap:wrap; gap:3px; justify-content:center; align-items:center; max-width:100%}
+.blobs small{font-size:11px; color:var(--muted)}
+/* «Пятно»: неровный круг, у каждого чуть своя форма */
+.blob{
+  display:block; width:14px; height:14px; background:var(--c);
+  border-radius:58% 42% 55% 45% / 48% 56% 44% 52%;
+}
+.blob:nth-child(2n){border-radius:44% 56% 41% 59% / 57% 43% 55% 45%; transform:rotate(40deg)}
+.blob:nth-child(3n){border-radius:52% 48% 62% 38% / 42% 60% 40% 58%; transform:rotate(-30deg)}
+.blob.done{background:transparent; border:2px solid var(--c); opacity:.55}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:14px 2px 0; font-size:13px; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.legend .blob{width:12px; height:12px}
+.dayhead{display:flex; justify-content:space-between; align-items:center; gap:8px; margin:20px 0 4px}
+.dayhead b{font-weight:800; font-size:18px}
+
+/* =========================================================
+   6в. НАСТРОЙКИ И НАПОМИНАНИЯ
+   ========================================================= */
+.panel{
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow-sm);
+  border-radius:24px; padding:16px; margin:8px 0;
+}
+.setrow{display:flex; justify-content:space-between; align-items:center; gap:14px}
+.setrow b{font-weight:700}
+.setrow small{display:block; color:var(--muted); font-size:13px; font-weight:500; margin-top:2px}
+/* Переключатель */
+.sw{
+  flex:none; width:54px; height:32px; padding:3px; border:0; border-radius:999px; cursor:pointer;
+  display:flex; align-items:center; background:var(--line); transition:background .2s;
+}
+.sw i{width:26px; height:26px; border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .2s}
+.sw.on{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.sw.on i{transform:translateX(22px)}
+.opts{margin-top:6px; transition:opacity .2s}
+.opts.off{opacity:.45; pointer-events:none}
+.optlabel{font-size:13px; font-weight:700; color:var(--muted); margin:14px 0 2px}
+.opts input[type=time]{max-width:170px}
+.status{font-size:13px; color:var(--muted); margin:12px 0 0}
+.status.ok{color:var(--accent-ink); font-weight:600}
+.panel .seg{margin-top:8px}
+
+/* Напоминание внутри приложения */
+.alert{
+  display:flex; gap:12px; align-items:center; margin:8px 0; padding:12px 14px;
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:22px;
+}
+.alert svg{flex:none; width:24px; height:24px; color:var(--accent-ink)}
+.toast{
+  position:fixed; left:50%; transform:translateX(-50%); z-index:20;
+  bottom:calc(92px + env(safe-area-inset-bottom)); max-width:90vw; text-align:center;
+  padding:10px 18px; border-radius:999px; font-size:14px; font-weight:600;
+  background:var(--text); color:var(--bg); box-shadow:0 12px 28px -10px rgba(0,0,0,.5);
+}
+
+/* =========================================================
+   6г. ПОИСК
+   ========================================================= */
+.navsearch{
+  flex:none !important; width:44px; padding:0 !important; display:grid; place-items:center;
+  background:var(--accent) !important; color:#fff !important; margin-left:4px;
+}
+.navsearch svg{width:20px; height:20px}
+.navsearch:hover{filter:brightness(1.08)}
+
+dialog.searchdlg{
+  width:min(94vw,640px); max-height:min(86vh,760px); margin:5vh auto auto; padding:0; overflow:hidden;
+}
+@supports (height:1dvh){ dialog.searchdlg{max-height:min(86dvh,760px)} }
+.searchdlg[open]{display:flex; flex-direction:column}
+.sfield{display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--line)}
+.sfield > svg{flex:none; width:22px; height:22px; color:var(--accent-ink)}
+.sfield input{
+  flex:1; min-width:0; border:0; border-radius:0; background:transparent; padding:8px 4px;
+  font-size:16px; font-weight:600; outline:none;
+}
+.sfield input::-webkit-search-cancel-button{display:none}
+#searchResults{flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:4px 14px 18px}
+.sgroup{
+  display:flex; justify-content:space-between; margin:16px 2px 4px;
+  font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);
+}
+.sitem{
+  display:flex; align-items:center; gap:12px; width:100%; margin:6px 0; padding:10px 12px;
+  background:var(--card); border:1px solid var(--line); border-radius:18px;
+  color:inherit; font:inherit; text-align:left; text-decoration:none; cursor:pointer;
+}
+.sitem:hover, .sitem:focus-visible{border-color:var(--accent)}
+.stext{display:flex; flex-direction:column; flex:1; min-width:0}
+.stext b{font-weight:700; overflow-wrap:anywhere}
+.stext small{color:var(--muted); font-size:13px; font-weight:500; overflow-wrap:anywhere}
+.sitem.done b{text-decoration:line-through; color:var(--muted)}
+.sdc{flex:none; width:14px; height:14px; background:var(--c); border-radius:58% 42% 55% 45% / 48% 56% 44% 52%}
+.ini{
+  flex:none; width:36px; height:36px; border-radius:50%; display:grid; place-items:center;
+  background:var(--accent-soft); color:var(--accent-ink); font-weight:800;
+}
+mark{background:var(--accent-soft); color:var(--accent-ink); font-weight:700; border-radius:4px; padding:0 2px}
+.smore{margin:4px 0 0}
+.sempty{color:var(--muted); text-align:center; padding:26px 10px 4px; margin:0}
+.sempty.small{font-size:13px; padding-top:8px}
+
+/* =========================================================
+   6ж. ОЦЕНКИ
+   ========================================================= */
+.gv{
+  flex:none; min-width:46px; height:46px; padding:0 8px; border-radius:16px; display:grid; place-items:center;
+  font-weight:800; font-size:18px; background:var(--accent-soft); color:var(--accent-ink);
+}
+.gv.hi{background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--on-accent)}
+.gv.bad{background:transparent; color:var(--danger); border:2px solid var(--danger)}
+.gv.none{background:transparent; color:var(--muted); font-weight:600}
+.item.grade .body b{font-size:15px}
+
+/* Установка как приложение */
+.step-list{margin:8px 0 0; padding-left:20px; color:var(--muted); font-size:14px}
+.step-list li{margin:6px 0}
+.step-list b{color:var(--text)}
+@media (display-mode: standalone){ body{padding-top:env(safe-area-inset-top)} }
+
+/* =========================================================
+   6е. СЕССИЯ: ЭКЗАМЕНЫ И ЗАЧЁТЫ
+   ========================================================= */
+.blob.exam{border-radius:3px !important; transform:rotate(45deg) scale(.82) !important}
+.pbar{height:8px; border-radius:999px; background:var(--accent-soft); overflow:hidden; margin:8px 0 4px}
+.pbar i{display:block; height:100%; border-radius:999px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); transition:width .3s}
+.prog{color:var(--muted); font-size:13px}
+.period{
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow-sm);
+  border-radius:22px; padding:14px 16px; margin:10px 0;
+}
+.period b{display:block; font-size:17px}
+.period span{display:block; color:var(--muted); font-size:14px; margin-top:2px}
+.item.exam .body{min-width:0}
+.item.exam.done .body b{text-decoration:line-through; color:var(--muted)}
+.item.topic{cursor:default; padding:8px 12px}
+.item.topic.done .body b{text-decoration:line-through; color:var(--muted); font-weight:600}
+.addtopic{display:flex; gap:8px; align-items:center; margin:10px 0}
+.addtopic input{flex:1; min-width:0}
+.sumline{color:var(--muted); font-size:14px; margin:4px 2px 0}
+
+/* =========================================================
+   6д. GOOGLE ДИСК
+   ========================================================= */
+.acct{display:flex; align-items:center; gap:12px}
+.chipok{
+  display:inline-block; margin-left:6px; padding:1px 10px; border-radius:999px; vertical-align:middle;
+  background:var(--accent-soft); color:var(--accent-ink); font-size:12px; font-weight:700;
+}
+.status.err{color:var(--danger); font-weight:600}
+.panel .seg button[disabled], .panel .btn[disabled]{opacity:.5; cursor:default}
+.panel .btn{margin-top:10px}
+.howto{margin-top:12px; font-size:14px}
+.howto summary{
+  display:inline-block; cursor:pointer; padding:6px 14px; border-radius:999px; list-style:none;
+  background:var(--accent-soft); color:var(--accent-ink); font-weight:700;
+}
+.howto summary::-webkit-details-marker{display:none}
+.howto ol{margin:12px 0 0; padding-left:20px; color:var(--muted)}
+.howto li{margin:8px 0}
+.howto b{color:var(--text)}
+code{
+  background:var(--accent-soft); color:var(--accent-ink); padding:1px 7px; border-radius:8px;
+  font-size:13px; overflow-wrap:anywhere;
+}
+.panel input.mono{font-size:14px}
+.item.file{cursor:default}
+.item.file .body small{color:var(--muted); font-size:13px}
+label.attach{display:inline-block; margin:6px 0 0; text-align:center}
+label.attach.dis{opacity:.6; cursor:default; pointer-events:none}
+.attach-note{font-size:13px; color:var(--muted); margin:8px 2px 0}
+
+/* =========================================================
+   7. ТЕЛЕФОН, ПЛАНШЕТ И КОМПЬЮТЕР
+   Базовые стили выше рассчитаны на телефон (одна колонка, меню снизу).
+   Всё, что ниже, добавляется на экранах пошире.
+   ========================================================= */
+@media (hover:hover){
+  .item:hover{border-color:var(--accent)}
+  .card{transition:transform .15s} .card:hover{transform:translateY(-3px)}
+  .mini:hover, .seg button:hover, nav button:hover{filter:brightness(.96)}
+}
+@media (max-width:380px){ nav{left:8px; right:8px; padding:4px; gap:0} nav button{font-size:10.5px; padding-left:2px; padding-right:2px; letter-spacing:-.1px} .navsearch{width:40px; margin-left:2px} }
+@media (max-width:420px){ nav button{font-size:11.5px; padding-left:3px; padding-right:3px} .hero::after{right:70px; top:74px} }
+
+@media (min-width:640px){
+  .wrap{max-width:980px}
+  .days{display:grid; grid-template-columns:repeat(2, 1fr); gap:0 18px}
+  .days .day h2{margin-top:18px}
+  .cell{min-height:84px}
+  .blob{width:16px; height:16px}
+}
+
+/* Компьютер: меню-«таблетка» вверху по центру, три колонки дней */
+@media (min-width:960px){
+  body{padding-top:84px; padding-bottom:40px}
+  nav{
+    top:16px; bottom:auto; left:50%; right:auto; margin:0; max-width:none; width:max-content;
+    transform:translateX(-50%); padding:6px;
+  }
+  nav button{flex:none; padding:10px 22px; font-size:14px}
+  .wrap{max-width:1240px; padding:12px 36px}
+  .hero{padding:32px 32px 26px; min-height:230px}
+  .hero::before{width:300px; height:300px; right:-50px; top:-90px}
+  .hero::after{width:140px; height:140px; right:230px; top:40px}
+  .stats{max-width:560px}
+  .stat b{font-size:26px}
+  .days{grid-template-columns:repeat(3, 1fr); gap:0 22px}
+  .fab{right:36px; bottom:32px}
+  .toast{bottom:32px}
+  #tab-tasks, #tab-settings{max-width:760px}
+  #tab-calendar{max-width:900px}
+  .cell{min-height:100px; padding-top:8px}
+  .blob{width:18px; height:18px}
+  .grid{grid-template-columns:repeat(auto-fill, minmax(240px, 1fr))}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <h1>Мой универ</h1>
+    <p id="today"></p>
+    <div class="stats" id="heroStats"></div>
+  </header>
+
+  <!-- Сюда попадают напоминания о дедлайнах -->
+  <div id="alerts"></div>
+
+  <!-- Четыре вкладки. Видна всегда только одна. -->
+  <section id="tab-week"></section>
+  <section id="tab-tasks" hidden></section>
+  <section id="tab-calendar" hidden></section>
+  <section id="tab-subjects" hidden></section>
+  <section id="tab-settings" hidden></section>
+</div>
+
+<button class="fab" id="fab" data-act="fab" aria-label="Добавить">+</button>
+
+<nav>
+  <button data-act="tab" data-id="week">Расписание</button>
+  <button data-act="tab" data-id="tasks">Задания</button>
+  <button data-act="tab" data-id="calendar">Календарь</button>
+  <button data-act="tab" data-id="subjects">Предметы</button>
+  <button data-act="tab" data-id="settings">Ещё</button>
+  <button class="navsearch" data-act="opensearch" aria-label="Поиск по приложению" title="Поиск (Ctrl K или /)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+  </button>
+</nav>
+
+<!-- Одно общее окно, которое мы наполняем полями под нужную задачу -->
+<dialog id="dlg"><form id="dlgForm"></form></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<!-- Окно глобального поиска -->
+<dialog id="searchDlg" class="searchdlg" aria-label="Поиск">
+  <div class="sfield">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="searchInput" type="text" inputmode="search" enterkeyhint="search" placeholder="Что ищем?" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Поиск">
+    <button class="mini" id="searchClear" data-act="searchclear" aria-label="Очистить" hidden>✕</button>
+    <button class="mini" data-act="searchclose">Закрыть</button>
+  </div>
+  <div id="searchResults"></div>
+</dialog>
+
+<script>
+/* =========================================================
+   1. ДАННЫЕ
+   Всё хранится в браузере (localStorage) в одном объекте state:
+   { settings, subjects, lessons, tasks }
+   ========================================================= */
+const DAYS = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+const KEY  = 'moyUniversitet.v5';
+const OLD_KEYS = ['moyUniversitet.v4', 'moyUniversitet.v3', 'moyUniversitet.v2', 'moyUniversitet.v1'];   // прошлые версии приложения
+
+const $   = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+// Защита: превращаем спецсимволы в безопасный текст перед вставкой в HTML
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Дата в формате ГГГГ-ММ-ДД (по местному времени)
+const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const todayIdx = () => (new Date().getDay() + 6) % 7;   // Пн = 0 ... Вс = 6
+
+// ---- Расписание 1 курса (Институт психологии), 02.11.2026 – 05.12.2026 ----
+// Расписание группы 320126. Каждая строка: [день недели (0 = пн), пара, группа, даты, тип, предмет, преподаватель, аудитория]
+//   группа: '*' = для всех, '1' = 320126
+//   даты:   null = все занятия этого дня недели, иначе даты через пробел ('02.11 16.11')
+const GROUPS = { '1':'320126' };
+const SLOTS  = { A:['11:40','13:15'], B:['14:00','15:35'], C:['15:45','17:20'], D:['17:30','19:05'] };
+const DAYDATES = [
+  '02.11 09.11 16.11 23.11 30.11',   // понедельники
+  '03.11 10.11 17.11 24.11 01.12',   // вторники
+  '04.11 11.11 18.11 25.11 02.12',   // среды
+  '05.11 12.11 19.11 26.11 03.12',   // четверги
+  '06.11 13.11 20.11 27.11 04.12',   // пятницы
+  '14.11 21.11 28.11 05.12'          // субботы (07.11 — праздничный день)
+];
+const SUBJ = {
+  anat :['Анатомия нервной системы',              '#2f9e8f'],
+  bzh  :['Безопасность жизнедеятельности человека','#e08e2b'],
+  hist :['История психологии',                     '#8d5a97'],
+  lang :['Иностранный язык',                       '#3b82c4'],
+  econ :['Современная политэкономия',              '#a1887f'],
+  psy  :['Общая психология',                       '#c8553d'],
+  phil :['Философия',                              '#7c6cf0'],
+  it   :['Информационные технологии в работе психолога', '#2b8cbe'],
+  prakt:['Психологический практикум',              '#d6457e'],
+  tren :['Психологический тренинг (факультатив)',  '#6aa84f'],
+  fiz  :['Физическая культура',                    '#7f8c8d']
+};
+// Примеры конспектов: после «Стереть примеры» исчезнут вместе с предметами
+const SAMPLE_NOTES = {
+  psy:  'Лекция 1. Предмет общей психологии: психика, сознание, поведение. Основные школы: психоанализ, бихевиоризм, гештальт-психология.\nВопрос к семинару: чем ощущение отличается от восприятия?',
+  phil: 'Лекция 2. Белорусская философская мысль: Франциск Скорина, Симеон Полоцкий, Кирилл Туровский.\nПодготовить тезисы для эссе.',
+  anat: 'Нейрон: тело, дендриты, аксон. Синапс — место контакта между нейронами.\nОтделы ЦНС: головной и спинной мозг.',
+  hist: 'Вундт открыл первую лабораторию экспериментальной психологии в 1879 году в Лейпциге.'
+};
+const FIZ_R  = 'ул. Чурлениса, 3 (общежитие №8)';
+const IT_T   = 'ст. преп. Юргульский В.В.';
+const IT_R   = '317 к.2';
+const LANG_T = 'преп. Конева Т.И.';
+
+const TIMETABLE = [
+  // ----- понедельник -----
+  [0,'A','*',null,'ПЗ','fiz','ст. преп. Ярец Г.Г.',FIZ_R],
+  [0,'B','*','02.11','ЛК','anat','доц. Полещук Ю.А.','102 к.3'],
+  [0,'B','*','09.11 16.11','ЛК','bzh','ст. преп. Булавко А.А.','471 к.1'],
+  [0,'B','*','23.11 30.11','ЛК','hist','доц. Морозов А.А.','471 к.1'],
+  [0,'C','*',null,'ПЗ','lang',LANG_T,'406 к.3'],
+  [0,'D','*',null,'ПЗ','lang',LANG_T,'406 к.3'],
+  // ----- вторник -----
+  [1,'B','*','03.11 10.11','ЛК','econ','ст. преп. Пашкевич Н.В.','102 к.3'],
+  [1,'B','*','17.11 24.11 01.12','ЛК','psy','ст. преп. Черноокая В.С.','471 к.1'],
+  [1,'C','1','03.11 10.11','ПЗ','anat','преп. Хруцкая Л.С.','406 к.3'],
+  [1,'C','1','17.11 24.11 01.12','СЕМ','psy','преп. Кмец Е.Н.','406 к.3'],
+  [1,'D','1','03.11 10.11','СЕМ','psy','преп. Кмец Е.Н.','406 к.3'],
+  // ----- среда -----
+  [2,'A','*',null,'ПЗ','fiz','ст. преп. Ярец Г.Г.',FIZ_R],
+  [2,'B','1',null,'ЛЗ','it',IT_T,IT_R],
+  [2,'C','1',null,'ЛЗ','it',IT_T,IT_R],
+  [2,'D','1','11.11','ПЗ','tren','ст. преп. Вертынская Л.А.','406 к.2'],
+  // ----- четверг -----
+  [3,'B','*','05.11 12.11','ЛК','phil','ст. преп. Жмодикова Е.А.','404 к.3'],
+  [3,'B','*','19.11','ЛК','psy','ст. преп. Черноокая В.С.','471 к.1'],
+  [3,'C','*','05.11 12.11 19.11','ЛК','hist','доц. Морозов А.А.','404 к.3'],
+  [3,'C','*','26.11 03.12','ЛК','psy','ст. преп. Черноокая В.С.','471 к.1'],
+  [3,'D','1','05.11 12.11 19.11','СЕМ','econ','ст. преп. Пашкевич Н.В.','501 к.3'],
+  // ----- пятница -----
+  [4,'A','1','06.11 20.11 27.11 04.12','ПЗ','tren','ст. преп. Вертынская Л.А.','93 к.1'],
+  [4,'B','1',null,'СЕМ','hist','преп.-стаж. Волохонович А.П.','406 к.3'],
+  [4,'C','1',null,'ПЗ','bzh','ст. преп. Булавко А.А.','93 к.1'],
+  [4,'D','1','27.11 04.12','СЕМ','phil','преп. Липницкая А.Г.','306 к.2'],
+  // ----- суббота -----
+  [5,'C','1',null,'ПЗ','prakt','ст. преп. Капанец Ю.В.','406 к.2'],
+  [5,'D','1',null,'ПЗ','prakt','ст. преп. Капанец Ю.В.','406 к.2'],
+];
+
+// Превращаем таблицу выше в обычные пары приложения
+const toISO = s => { const [d, m] = s.split('.'); return '2026-' + m + '-' + d; };
+function buildTimetable(){
+  return TIMETABLE.map(([day, slot, g, dates, kind, key, teacher, room]) => {
+    const list = (dates || DAYDATES[day]).split(' ').map(toISO);
+    return {
+      id: uid(), ex: true,
+      day: (new Date(list[0] + 'T00:00:00').getDay() + 6) % 7,
+      start: SLOTS[slot][0], end: SLOTS[slot][1],
+      subjectId: key, kind, teacher,
+      room: /^\d/.test(room) ? 'ауд. ' + room : room,
+      week: 'all',
+      groups: g === '*' ? [] : [GROUPS[g]],
+      dates: list
+    };
+  });
+}
+
+// Примеры, чтобы с первого запуска было видно, как всё выглядит (ex: true — «пример»)
+function sample(){
+  const inDays = n => { const x = new Date(); x.setDate(x.getDate() + n); return iso(x); };
+  return {
+    settings: { theme:'light', week:'all', showDone:false, group:'320126' },
+    subjects: Object.entries(SUBJ).map(([id, [name, color]]) => ({ id, ex:true, name, color, notes:SAMPLE_NOTES[id] || '', links:[] })),
+    lessons:  buildTimetable(),
+    dayoffs:  [{ date:'2026-11-07', title:'Праздничный день', ex:true }],
+    tasks: [
+      { id:uid(), ex:true, title:'Прочитать главу 2', subjectId:'psy',  due:inDays(2), type:'hw',       done:false },
+      { id:uid(), ex:true, title:'Эссе по философии', subjectId:'phil', due:inDays(6), type:'deadline', done:false },
+      { id:uid(), ex:true, title:'Реферат по истории психологии', subjectId:'hist', due:inDays(6), type:'deadline', done:false },
+      { id:uid(), ex:true, title:'Сдать тест по анатомии', subjectId:'anat', due:inDays(10), type:'deadline', done:false },
+      { id:uid(), ex:true, title:'Конспект по политэкономии', subjectId:'econ', due:inDays(13), type:'hw', done:false }
+    ]
+  };
+}
+
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return normalize(JSON.parse(raw));
+    // Перенос из прошлых версий, если там уже были твои собственные записи
+    for (const k of OLD_KEYS){
+      const old = localStorage.getItem(k);
+      if (!old) continue;
+      const o = JSON.parse(old);
+      const mine = [...(o.subjects || []), ...(o.lessons || []), ...(o.tasks || [])].some(x => !x.ex);
+      if (mine){
+        // примеры других групп убираем
+        o.lessons = (o.lessons || []).filter(x => !(x.ex && x.groups && x.groups.length && !x.groups.includes('320126')));
+        return normalize(o);
+      }
+    }
+  } catch(e) {}
+  return normalize(sample());
+}
+// Подстраховка: если чего-то не хватает в данных, добавляем пустое
+// Экзамены и зачёты из учебного плана 1 курса психологии (2026/27). Даты проведения пока не назначены.
+function seedExams(){
+  const rows = [
+    [1,'exam','phil'],[1,'exam','econ'],[1,'exam','psy'],
+    [1,'credit','prakt'],[1,'credit','it'],[1,'credit','anat'],[1,'credit','hist'],[1,'credit','lang'],[1,'credit','fiz'],[1,'credit','bzh'],
+    [2,'exam','psy'],[2,'exam','hist'],[2,'exam','lang'],
+    [2,'exam','','История белорусской государственности'],[2,'exam','','Психофизиология'],
+    [2,'credit','','Методы прикладной статистики'],[2,'credit','','Психология юзабилити'],
+    [2,'credit','','Нейропсихология'],[2,'credit','','Педагогика'],[2,'credit','fiz'],
+    [2,'credit','','Белорусский язык (профессиональная лексика)']
+  ];
+  return rows.map(([sem, kind, sid, title]) => ({ id:uid(), title: title || SUBJ[sid][0], subjectId:sid, kind, sem,
+    date:'', time:'', room:'', note:'', topics:[], passed:false, result:'' }));
+}
+// Замены аудиторий, вписанные от руки в бумажное расписание: [предмет, тип, первая дата, было, стало]
+const ROOM_FIXES = [
+  ['anat','ЛК','2026-11-02','ауд. 471 к.1','ауд. 102 к.3'],
+  ['econ','ЛК','2026-11-03','ауд. 471 к.1','ауд. 102 к.3'],
+  ['phil','ЛК','2026-11-05','ауд. 471 к.1','ауд. 404 к.3'],
+  ['hist','ЛК','2026-11-05','ауд. 471 к.1','ауд. 404 к.3'],
+  ['econ','СЕМ','2026-11-05','ауд. 302 к.2','ауд. 501 к.3'],
+  ['tren','ПЗ','2026-11-06','ауд. 406 к.2','ауд. 93 к.1'],
+  ['hist','СЕМ','2026-11-06','ауд. 501 к.3','ауд. 406 к.3'],
+  ['bzh','ПЗ','2026-11-06','ауд. 406 к.2','ауд. 93 к.1']
+];
+function applyRoomFixes(s){
+  if (s.roomFix === 1) return;
+  (s.lessons || []).forEach(l => ROOM_FIXES.forEach(([sid, kind, d0, was, now]) => {
+    if (l.subjectId === sid && l.kind === kind && l.dates && l.dates[0] === d0 && l.room === was) l.room = now;
+  }));
+  s.roomFix = 1;
+}
+function normalize(s){
+  applyRoomFixes(s);
+  s.settings = Object.assign({ theme:'light', week:'all', showDone:false, group:'all' }, s.settings);
+  // старые названия тем переносим на новые (светлая / тёмная)
+  s.settings.theme = ({ paper:'light', pastel:'light', night:'dark' })[s.settings.theme] || s.settings.theme;
+  if (s.settings.theme !== 'dark') s.settings.theme = 'light';
+  // уведомления: on — включены, days — за сколько дней напоминать (0 = в день срока),
+  // time — во сколько, scope — о чём: 'all' (все задания со сроком) или 'deadline' (только дедлайны)
+  s.settings.notify = Object.assign({ on:false, days:[0,1], time:'09:00', scope:'all' }, s.settings.notify);
+  // Google Диск: clientId — ключ приложения из Google Cloud, connected — аккаунт привязан,
+  // auto — сохранять на Диск само, lastRemote — версия файла на Диске при последней синхронизации,
+  // dirty — есть изменения, ещё не отправленные на Диск, conflict — версии на Диске и здесь разошлись
+  s.settings.drive = Object.assign({ clientId:'', connected:false, email:'', name:'', auto:true,
+    lastSync:'', lastRemote:'', dirty:false, conflict:false }, s.settings.drive);
+  s.reminded = s.reminded || {};   // о чём уже напомнили, чтобы не повторять
+  s.alerts   = s.alerts   || [];   // напоминания, которые показаны в приложении
+  s.subjects = (s.subjects || []).map(x => Object.assign({ notes:'', links:[], files:[], grades:[] }, x));
+  s.subjects.forEach(x => { if (!Array.isArray(x.files)) x.files = []; if (!Array.isArray(x.grades)) x.grades = []; });   // файлы, прикреплённые на Google Диск
+  // экзамены и зачёты: в первый раз заполняем из учебного плана (но не после «Стереть всё»)
+  if (!Array.isArray(s.exams)) s.exams = s.subjects.length ? seedExams() : [];
+  s.exams = s.exams.map(e => Object.assign({ title:'', subjectId:'', kind:'exam', sem:1, date:'', time:'', room:'', note:'', topics:[], passed:false, result:'' }, e));
+  s.exams.forEach(e => { if (!Array.isArray(e.topics)) e.topics = []; });
+  s.lessons  = s.lessons || [];
+  s.dayoffs  = s.dayoffs || [];
+  s.tasks    = s.tasks   || [];
+  return s;
+}
+let quietSave = false;   // true — сохраняем, не считая это изменением данных (для служебных записей)
+function save(){
+  if (!quietSave) noteLocalChange();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {}
+}
+function saveQuiet(){ quietSave = true; try { save(); } finally { quietSave = false; } }
+
+let state = load();
+let currentTab  = 'week';
+let weekStart = initialWeekStart();   // понедельник той недели, которая сейчас на экране
+// Учебный год 2026/27 по учебному плану: семестры, сессии, каникулы
+const PERIODS = [
+  { k:'sem1', name:'1 семестр',       from:'2026-09-01', to:'2026-12-26' },
+  { k:'win',  name:'Зимняя сессия',   from:'2026-12-28', to:'2027-01-09' },
+  { k:'hol1', name:'Зимние каникулы', from:'2027-01-11', to:'2027-01-23' },
+  { k:'sem2', name:'2 семестр',       from:'2027-01-25', to:'2027-06-05' },
+  { k:'sum',  name:'Летняя сессия',   from:'2027-06-07', to:'2027-06-30' },
+  { k:'hol2', name:'Летние каникулы', from:'2027-07-01', to:'2027-08-31' }
+];
+const EXAM_KIND = { exam:'Экзамен', credit:'Зачёт' };
+let openSubject = null;      // id предмета, страница которого открыта
+let subjView = 'list';                  // вкладка «Предметы»: 'list' или 'grades'
+let taskView = 'tasks';                  // вкладка «Задания»: 'tasks' или 'session'
+let openExam = null;                    // id экзамена или зачёта, страница которого открыта
+let sessSem = (() => { const t = iso(new Date()); const p = PERIODS.find(x => t >= x.from && t <= x.to) || PERIODS.find(x => x.from > t);
+  return p && ['sem2', 'sum', 'hol2'].includes(p.k) ? 2 : 1; })();
+let calMonth = monthStart(new Date());   // какой месяц показан в календаре
+let calSel   = iso(new Date());          // какой день выбран в календаре
+function monthStart(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+
+const subj = id => state.subjects.find(s => s.id === id) || { name:'Без предмета', color:'#999999' };
+const hasExamples = () => [...state.subjects, ...state.lessons, ...state.tasks].some(x => x.ex);
+
+// Сохранить и перерисовать всё
+function commit(){ save(); renderAll(); }
+
+/* =========================================================
+   2. ДАТЫ
+   ========================================================= */
+function daysUntil(due){
+  const a = new Date(due + 'T00:00:00');
+  const b = new Date(); b.setHours(0,0,0,0);
+  return Math.round((a - b) / 864e5);
+}
+function dueLabel(due){
+  if (!due) return '';
+  const n = daysUntil(due);
+  const pretty = new Date(due + 'T00:00:00').toLocaleDateString('ru-RU', { day:'numeric', month:'short' });
+  if (n < 0)  return `<span class="late">просрочено · ${pretty}</span>`;
+  if (n === 0) return `<span class="late">сегодня</span>`;
+  if (n === 1) return `завтра · ${pretty}`;
+  return `${pretty} · через ${n} дн.`;
+}
+
+/* =========================================================
+   3. ОТРИСОВКА ВКЛАДОК
+   ========================================================= */
+function renderAll(){
+  document.documentElement.dataset.theme = state.settings.theme;
+  $('#today').textContent = new Date().toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
+  renderHero(); renderAlerts(); renderWeek(); renderTasks(); renderCalendar(); renderSubjects(); renderSettings(); showTab();
+}
+
+/* ---------- Шапка: дата и три плитки ---------- */
+const plural = (n, f) => { const a = Math.abs(n) % 100, b = a % 10;
+  return a > 10 && a < 20 ? f[2] : b > 1 && b < 5 ? f[1] : b === 1 ? f[0] : f[2]; };
+
+function renderHero(){
+  const todayISO = iso(new Date());
+  const lessons = state.lessons.filter(l => lessonOn(l, todayISO, todayIdx())).length;
+  const open = state.tasks.filter(t => !t.done);
+  const next = open.concat(examItems().filter(x => !x.done)).filter(t => t.due && t.due >= todayISO).sort((a, b) => a.due.localeCompare(b.due))[0];
+  const d = next ? daysUntil(next.due) : null;
+  const tiles = [
+    [lessons, plural(lessons, ['пара', 'пары', 'пар']) + ' сегодня'],
+    [open.length, plural(open.length, ['задание', 'задания', 'заданий']) + ' в работе'],
+    [next ? (d === 0 ? 'Сегодня' : d === 1 ? 'Завтра' : d + ' ' + plural(d, ['день', 'дня', 'дней'])) : '—',
+     next ? 'до ближайшего срока' : 'сроков нет']
+  ];
+  $('#heroStats').innerHTML = tiles.map(([v, t]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(t)}</span></div>`).join('');
+
+  // цвет адресной строки на телефоне подстраиваем под тему
+  const mt = document.querySelector('meta[name="theme-color"]');
+  if (mt && mt.setAttribute) mt.setAttribute('content', state.settings.theme === 'dark' ? '#0a0708' : '#f0f0f6');
+}
+
+function showTab(){
+  ['week','tasks','calendar','subjects','settings'].forEach(t => { $('#tab-' + t).hidden = (t !== currentTab); });
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.id === currentTab));
+  $('#fab').hidden = (currentTab === 'settings');
+}
+
+/* ---------- Расписание ---------- */
+function lessonHTML(l){
+  const s = subj(l.subjectId);
+  const meta = [l.kind, l.room, l.week === 'even' ? 'чётная' : l.week === 'odd' ? 'нечётная' : ''].filter(Boolean).join(' · ');
+  return `<div class="item lesson" data-act="editlesson" data-id="${l.id}" style="--c:${esc(s.color)}">
+    <div class="time">${esc(l.start)}<small>${esc(l.end)}</small></div>
+    <div class="bar"></div>
+    <div class="body"><b>${esc(s.name)}</b><span>${esc(meta)}</span>${l.teacher ? `<div class="teacher">${esc(l.teacher)}</div>` : ''}</div>
+  </div>`;
+}
+
+// Понедельник той недели, в которой лежит дата d
+function mondayOf(d){
+  const x = new Date(d); x.setHours(0,0,0,0);
+  x.setDate(x.getDate() - (x.getDay() + 6) % 7);
+  return x;
+}
+// Если сегодня воскресенье, сразу показываем следующую неделю
+function initialWeekStart(){
+  const d = new Date();
+  if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+  return mondayOf(d);
+}
+
+// Показывать ли пару l в этот день?
+//  - у пары есть список дат (dates)  → только в эти даты
+//  - списка дат нет                  → каждую неделю в свой день недели (с учётом чётной/нечётной)
+//  - у пары указана группа           → только если выбрана эта группа (или «Все группы»)
+function lessonOn(l, dateISO, dayIdx){
+  const g = state.settings.group;
+  if (g !== 'all' && l.groups && l.groups.length && !l.groups.includes(g)) return false;
+  if (l.dates && l.dates.length) return l.dates.includes(dateISO);
+  const wk = state.settings.week;
+  return l.day === dayIdx && (wk === 'all' || l.week === 'all' || l.week === wk);
+}
+
+function renderWeek(){
+  const todayISO = iso(new Date());
+  const wk = state.settings.week, grp = state.settings.group;
+  const groups = [...new Set(state.lessons.flatMap(l => l.groups || []))].sort();
+  const fmt = d => d.toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+  const last = new Date(weekStart); last.setDate(last.getDate() + 5);
+
+  let html = '';
+  if (hasExamples()) html += `<div class="note"><span>Сейчас тут примеры. Нажми на любую пару или задание, чтобы изменить.</span><button class="mini" data-act="clearex">Стереть примеры</button></div>`;
+  if (groups.length > 1) html += `<div class="seg">` + [['all','Все группы'], ...groups.map(g => [g, g])]
+    .map(([k, t]) => `<button data-act="group" data-id="${esc(k)}" class="${grp===k?'on':''}">${esc(t)}</button>`).join('') + `</div>`;
+  if (state.lessons.some(l => l.week && l.week !== 'all')) html += `<div class="seg">` + [['all','Все недели'],['even','Чётная'],['odd','Нечётная']]
+    .map(([k, t]) => `<button data-act="week" data-id="${k}" class="${wk===k?'on':''}">${t}</button>`).join('') + `</div>`;
+  html += `<div class="weeknav">
+      <button class="mini" data-act="wkprev" aria-label="Прошлая неделя">←</button>
+      <b>${fmt(weekStart)} — ${fmt(last)}</b>
+      <button class="mini" data-act="wknext" aria-label="Следующая неделя">→</button>
+    </div>
+    <div class="seg"><button data-act="wktoday">К текущей неделе</button></div>`;
+
+  html += '<div class="days">';
+  DAYS.forEach((name, i) => {
+    const d = new Date(weekStart); d.setDate(d.getDate() + i);
+    const dISO = iso(d);
+    const ls = state.lessons.filter(l => lessonOn(l, dISO, i)).sort((a, b) => a.start.localeCompare(b.start));
+    const off = state.dayoffs.find(x => x.date === dISO);
+    if (i === 6 && !ls.length && !off) return;      // воскресенье показываем, только если там что-то есть
+    html += `<div class="day ${dISO===todayISO?'today':''}">
+      <h2><span>${name}<span class="date">${fmt(d)}${dISO===todayISO?' · сегодня':''}</span></span><button class="mini" data-act="addlesson" data-id="${dISO}">+</button></h2>
+      ${off ? `<div class="dayoff">${esc(off.title)}</div>` : ''}
+      ${ls.length ? ls.map(lessonHTML).join('') : (off ? '' : '<p class="empty">Пар нет</p>')}
+    </div>`;
+  });
+  html += '</div>';
+  $('#tab-week').innerHTML = html;
+}
+
+/* ---------- Задания (ДЗ и дедлайны) ---------- */
+function taskHTML(t){
+  if (t._exam) return examRowHTML(state.exams.find(e => e.id === t.eid));
+  const s = subj(t.subjectId);
+  return `<div class="item task ${t.done?'done':''}" data-act="edittask" data-id="${t.id}">
+    <button class="chk ${t.done?'on':''}" data-act="toggle" data-id="${t.id}" aria-label="Готово">${t.done?'✓':''}</button>
+    <div class="body">
+      <b>${esc(t.title)}</b>
+      <span><span class="chip" style="border-left:4px solid ${esc(s.color)}">${esc(s.name)}</span>${t.type==='deadline'?'дедлайн · ':'ДЗ · '}${dueLabel(t.due)}</span>
+    </div>
+  </div>`;
+}
+
+function renderTasks(){
+  const showDone = state.settings.showDone;
+  const list = state.tasks
+    .filter(t => !!t.done === showDone)
+    .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  const views = `<div class="seg">
+       <button data-act="taskview" data-id="tasks" class="${taskView === 'tasks' ? 'on' : ''}">Задания</button>
+       <button data-act="taskview" data-id="session" class="${taskView === 'session' ? 'on' : ''}">Сессия</button></div>`;
+  if (taskView === 'session'){ $('#tab-tasks').innerHTML = views + sessionHTML(); return; }
+  $('#tab-tasks').innerHTML = views +
+    `<div class="seg">
+       <button data-act="showdone" data-id="0" class="${!showDone?'on':''}">Нужно сделать</button>
+       <button data-act="showdone" data-id="1" class="${showDone?'on':''}">Сделано</button>
+     </div>` +
+    (list.length ? list.map(taskHTML).join('') : `<p class="empty">${showDone ? 'Пока ничего не отмечено' : 'Заданий нет. Можно выдохнуть.'}</p>`);
+}
+
+/* ---------- Календарь ---------- */
+function renderCalendar(){
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7;          // сколько клеток до 1-го числа (пн = 0)
+  const rows = Math.ceil((offset + new Date(y, m + 1, 0).getDate()) / 7);
+  const todayISO = iso(new Date());
+
+  // Задания, разложенные по дням
+  const byDay = {};
+  calItems().forEach(t => { if (t.due) (byDay[t.due] = byDay[t.due] || []).push(t); });
+
+  let title = calMonth.toLocaleDateString('ru-RU', { month:'long', year:'numeric' }).replace(' г.', '');
+  title = title.charAt(0).toUpperCase() + title.slice(1);
+
+  let html = `<div class="calnav">
+      <button class="mini" data-act="calprev" aria-label="Прошлый месяц">←</button>
+      <b>${esc(title)}</b>
+      <button class="mini" data-act="calnext" aria-label="Следующий месяц">→</button>
+    </div>
+    <div class="seg"><button data-act="caltoday">Сегодня</button></div>
+    <div class="calgrid">` + ['пн','вт','ср','чт','пт','сб','вс'].map(d => `<div class="calh">${d}</div>`).join('');
+
+  for (let i = 0; i < rows * 7; i++){
+    const d = new Date(y, m, 1 - offset + i), dISO = iso(d);
+    const list = byDay[dISO] || [];
+    const blobs = list.slice(0, 4).map(t =>
+      `<i class="blob ${t.done ? 'done' : ''} ${t._exam ? 'exam' : ''}" style="--c:${esc(subj(t.subjectId).color)}"></i>`).join('') +
+      (list.length > 4 ? `<small>+${list.length - 4}</small>` : '');
+    html += `<button class="cell ${d.getMonth() !== m ? 'out' : ''} ${dISO === todayISO ? 'today' : ''} ${dISO === calSel ? 'sel' : ''}"
+        data-act="calday" data-id="${dISO}" aria-label="${d.getDate()}, заданий: ${list.length}">
+        <span class="n">${d.getDate()}</span><span class="blobs">${blobs}</span></button>`;
+  }
+  html += `</div>`;
+
+  // Что значат цвета
+  const monthKey = y + '-' + String(m + 1).padStart(2, '0');
+  const used = new Set(calItems().filter(t => t.due && t.due.startsWith(monthKey)).map(t => t.subjectId));
+  const hasExam = calItems().some(t => t._exam && t.due && t.due.startsWith(monthKey));
+  const legend = state.subjects.filter(s => used.has(s.id));
+  if (legend.length || hasExam) html += `<div class="legend">` + legend.map(s =>
+    `<span><i class="blob" style="--c:${esc(s.color)}"></i>${esc(s.name)}</span>`).join('') +
+    (hasExam ? ' <span><i class="blob exam" style="--c:#888"></i>экзамен или зачёт</span>' : '') +
+    ` <span><i class="blob done" style="--c:#888"></i>сделано</span></div>`;
+
+  // Выбранный день
+  const sel = (byDay[calSel] || []).slice().sort((a, b) => (a.done - b.done));
+  const label = new Date(calSel + 'T00:00:00').toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
+  html += `<div class="dayhead"><b>${esc(label.charAt(0).toUpperCase() + label.slice(1))}</b><button class="mini" data-act="caladd">+ Задание</button></div>` +
+    (sel.length ? sel.map(taskHTML).join('') : `<p class="empty">В этот день сроков нет</p>`);
+
+  $('#tab-calendar').innerHTML = html;
+}
+
+/* ---------- Предметы ---------- */
+function safeUrl(u){ return /^https?:\/\//i.test(u) ? u : '#'; }
+
+function renderSubjects(){
+  const box = $('#tab-subjects');
+  const s = state.subjects.find(x => x.id === openSubject);
+
+  // Список предметов
+  if (!s){
+    openSubject = null;
+    const segv = `<div class="seg">
+      <button data-act="subjview" data-id="list" class="${subjView === 'list' ? 'on' : ''}">Предметы</button>
+      <button data-act="subjview" data-id="grades" class="${subjView === 'grades' ? 'on' : ''}">Оценки</button></div>`;
+    if (subjView === 'grades'){ box.innerHTML = segv + gradesOverview(); return; }
+    box.innerHTML = segv + (state.subjects.length
+      ? `<div class="grid">` + state.subjects.map(x => {
+          const n = state.tasks.filter(t => t.subjectId === x.id && !t.done).length, av = avgOf(x.grades);
+          return `<div class="card" data-act="opensubj" data-id="${x.id}" style="--c:${esc(x.color)}">
+            <i class="sdot"></i>
+            <b>${esc(x.name)}</b>
+            <div class="foot"><small>${n ? 'Заданий: ' + n : 'Всё сдано'} · ссылок: ${x.links.length}${av !== null ? ' · ср. ' + fmtNum(av) : ''}</small><span class="go">↗</span></div>
+          </div>`;
+        }).join('') + `</div>`
+      : `<p class="empty">Добавь первый предмет кнопкой «+»</p>`);
+    return;
+  }
+
+  // Страница одного предмета
+  const tasks = state.tasks.filter(t => t.subjectId === s.id && !t.done)
+                           .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  box.innerHTML =
+    `<button class="btn ghost" data-act="back">← Все предметы</button>
+     <h2 class="subj-title" style="--c:${esc(s.color)}"><span class="dot"></span>${esc(s.name)}
+       <button class="mini" data-act="editsubj" data-id="${s.id}">Изменить</button></h2>
+
+     <h3>Оценки${avgOf(s.grades) !== null ? ' · средний ' + fmtNum(avgOf(s.grades)) : ''}</h3>${gradesHTML(s)}
+
+     <h3>Конспект и заметки</h3>
+     <textarea id="notes" rows="8" placeholder="Пиши сюда конспект, вопросы к экзамену, что сказал препод...">${esc(s.notes)}</textarea>
+
+     <h3>Файлы</h3>${filesHTML(s)}
+
+     <h3>Материалы (ссылки на файлы, статьи, видео)</h3>` +
+    (s.links.length
+      ? s.links.map((l, i) => `<div class="item"><div class="body"><a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener">${esc(l.title)}</a></div>
+           <button class="mini" data-act="dellink" data-id="${s.id}" data-i="${i}">×</button></div>`).join('')
+      : `<p class="empty">Пока пусто. Кнопка «+» добавит ссылку.</p>`) +
+    `<h3>Что нужно сделать</h3>` +
+    (tasks.length ? tasks.map(taskHTML).join('') : `<p class="empty">Заданий по предмету нет</p>`);
+}
+
+/* ---------- Глобальный поиск ---------- */
+// Приводим текст к удобному для сравнения виду: маленькие буквы, «ё» = «е»
+const norm = s => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
+// Отрезаем окончание, чтобы «психология» находила «психологии», а «хруцкая» — «Хруцкой»
+const stem = t => t.length <= 4 ? t : t.length === 5 ? t.slice(0, -1) : t.slice(0, -2);
+const tokenize = q => [...new Set(norm(q).split(/\s+/).filter(Boolean).map(stem))].slice(0, 6);
+// Где заканчивается слово, начавшееся до позиции i (чтобы подсвечивать и выделять слово целиком)
+const wordEnd = (n, i) => { while (i < n.length && /[\p{L}\p{N}]/u.test(n[i])) i++; return i; };
+// Слова запроса должны все встретиться в тексте (в любом порядке)
+const hasAll = (text, tokens) => { const h = norm(text); return tokens.every(t => h.includes(t)); };
+const SEARCH_LIMIT = 6;       // сколько результатов показывать в группе до «Показать ещё»
+let searchMore = {};          // какие группы развёрнуты
+
+// Текст с подсвеченными совпадениями (всё экранировано)
+function hl(text, tokens){
+  const raw = String(text ?? ''), n = norm(raw);
+  if (!tokens.length || n.length !== raw.length) return esc(raw);
+  const mark = new Array(raw.length).fill(false);
+  tokens.forEach(t => { let i = n.indexOf(t); while (i !== -1){ for (let k = i, e = wordEnd(n, i + t.length); k < e; k++) mark[k] = true; i = n.indexOf(t, i + 1); } });
+  let out = '', i = 0;
+  while (i < raw.length){
+    let j = i; while (j < raw.length && mark[j] === mark[i]) j++;
+    const seg = esc(raw.slice(i, j));
+    out += mark[i] ? '<mark>' + seg + '</mark>' : seg; i = j;
+  }
+  return out;
+}
+// Короткий фрагмент конспекта вокруг первого совпадения
+function snippet(text, tokens){
+  const flat = String(text).replace(/\s+/g, ' ').trim(), n = norm(flat);
+  let pos = -1; tokens.forEach(t => { const i = n.indexOf(t); if (i !== -1 && (pos === -1 || i < pos)) pos = i; });
+  const a = Math.max(0, pos - 40), b = Math.min(flat.length, pos + 90);
+  return (a > 0 ? '…' : '') + flat.slice(a, b) + (b < flat.length ? '…' : '');
+}
+
+// Преподаватели собираются из пар расписания: «ст. преп. Ярец Г.Г.» → «Ярец Г.Г.»
+function teacherIndex(){
+  const map = new Map();
+  state.lessons.forEach(l => {
+    String(l.teacher || '').split(/\s*;\s*/).forEach(part => {
+      const label = part.trim(); if (!label) return;
+      const name = label.replace(/^((доц|проф|асс|ст\. ?преп|преп\.-стаж|преп)\.?\s*)+/i, '').trim() || label;
+      const key = norm(name);
+      if (!map.has(key)) map.set(key, { label, name, lessons: [] });
+      map.get(key).lessons.push(l);
+    });
+  });
+  return [...map.values()];
+}
+// Ближайшая будущая пара из списка (или null)
+function nextLesson(lessons){
+  const now = new Date(), today = new Date(now); today.setHours(0, 0, 0, 0);
+  const todayISO = iso(today), nowHM = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  let best = null;
+  lessons.forEach(l => {
+    let date = null;
+    if (l.dates && l.dates.length){
+      date = l.dates.filter(d => d > todayISO || (d === todayISO && l.end >= nowHM)).sort()[0] || null;
+    } else {
+      const add = (l.day - todayIdx() + 7) % 7 + (((l.day - todayIdx() + 7) % 7 === 0 && l.end < nowHM) ? 7 : 0);
+      const d = new Date(today); d.setDate(d.getDate() + add); date = iso(d);
+    }
+    if (!date) return;
+    const k = date + ' ' + l.start;
+    if (!best || k < best.k) best = { k, date, lesson:l };
+  });
+  return best;
+}
+
+const sItem = (cls, attrs, color, inner) =>
+  `<button class="sitem ${cls}" ${attrs}>${color ? `<i class="sdc" style="--c:${esc(color)}"></i>` : ''}<span class="stext">${inner}</span></button>`;
+
+function searchAll(tokens){
+  // Предметы
+  const subjects = state.subjects.filter(s => hasAll(s.name, tokens)).map(s => {
+    const n = state.tasks.filter(t => t.subjectId === s.id && !t.done).length;
+    return sItem('', `data-act="sr" data-kind="subj" data-id="${esc(s.id)}"`, s.color,
+      `<b>${hl(s.name, tokens)}</b><small>${n ? 'Заданий: ' + n : 'Всё сдано'} · ссылок: ${s.links.length}</small>`);
+  });
+
+  // Задания (ищем и по названию предмета)
+  const tasks = state.tasks.filter(t => hasAll(t.title + ' ' + subj(t.subjectId).name, tokens))
+    .sort((a, b) => (a.done - b.done) || (a.due || '9999').localeCompare(b.due || '9999'))
+    .map(t => {
+      const s = subj(t.subjectId), when = t.done ? 'сделано' : dueLabel(t.due);
+      return sItem(t.done ? 'done' : '', `data-act="sr" data-kind="task" data-id="${esc(t.id)}"`, s.color,
+        `<b>${hl(t.title, tokens)}</b><small>${esc(s.name)} · ${t.type === 'deadline' ? 'дедлайн' : 'ДЗ'}${when ? ' · ' + when : ''}</small>`);
+    });
+
+  // Конспекты
+  const notes = state.subjects.filter(s => s.notes && hasAll(s.notes, tokens)).map(s => {
+    const n = norm(s.notes); let pos = -1, len = 0;
+    tokens.forEach(t => { const i = n.indexOf(t); if (i !== -1 && (pos === -1 || i < pos)){ pos = i; len = t.length; } });
+    len = wordEnd(n, pos + len) - pos;
+    return sItem('', `data-act="sr" data-kind="note" data-id="${esc(s.id)}" data-pos="${pos}" data-len="${len}"`, s.color,
+      `<b>${esc(s.name)}</b><small>${hl(snippet(s.notes, tokens), tokens)}</small>`);
+  });
+
+  // Преподаватели (ищем и по предметам, которые они ведут)
+  const teachers = teacherIndex().map(t => ({ t, subjects:[...new Set(t.lessons.map(l => subj(l.subjectId).name))] }))
+    .filter(x => hasAll(x.t.label + ' ' + x.subjects.join(' '), tokens))
+    .map(({ t, subjects }) => {
+      const nx = nextLesson(t.lessons);
+      const nextTxt = nx
+        ? 'ближайшая: ' + new Date(nx.date + 'T00:00:00').toLocaleDateString('ru-RU', { weekday:'short', day:'numeric', month:'short' }) +
+          ' ' + nx.lesson.start + (nx.lesson.room ? ', ' + nx.lesson.room : '')
+        : 'пар в расписании больше нет';
+      return `<button class="sitem" data-act="sr" data-kind="teacher" data-id="${esc(t.name)}" data-date="${nx ? nx.date : ''}">
+        <i class="ini">${esc(t.name.charAt(0).toUpperCase())}</i>
+        <span class="stext"><b>${hl(t.label, tokens)}</b><small>${hl(subjects.join(', '), tokens)} · ${esc(nextTxt)}</small></span></button>`;
+    });
+
+  // Материалы (ссылки)
+  const links = [];
+  state.subjects.forEach(s => s.links.forEach(l => {
+    if (!hasAll(l.title + ' ' + l.url, tokens)) return;
+    let host = ''; try { host = new URL(l.url).hostname; } catch(e) {}
+    const inner = `<b>${hl(l.title, tokens)}</b><small>${esc(s.name)}${host ? ' · ' + esc(host) : ''}</small>`;
+    links.push(safeUrl(l.url) === '#'
+      ? sItem('', `data-act="sr" data-kind="subj" data-id="${esc(s.id)}"`, s.color, inner)
+      : `<a class="sitem" href="${esc(l.url)}" target="_blank" rel="noopener"><i class="sdc" style="--c:${esc(s.color)}"></i><span class="stext">${inner}</span></a>`);
+  }));
+
+  return [
+    { key:'subj',    title:'Предметы',       items:subjects },
+    { key:'task',    title:'Задания',        items:tasks },
+    { key:'note',    title:'Конспекты',      items:notes },
+    { key:'teacher', title:'Преподаватели',  items:teachers },
+    { key:'link',    title:'Материалы',      items:links }
+  ];
+}
+
+function renderSearch(){
+  const input = $('#searchInput'), box = $('#searchResults');
+  const tokens = tokenize(input.value);
+  $('#searchClear').hidden = !input.value;
+
+  if (!tokens.length){
+    const withNotes = state.subjects.filter(s => s.notes && s.notes.trim()).length;
+    box.innerHTML = `<p class="sempty">Ищи по названию предмета, фамилии преподавателя, словам из конспектов и заданий.</p>
+      <p class="sempty small">В поиске: предметов ${state.subjects.length}, заданий ${state.tasks.length}, конспектов ${withNotes}, преподавателей ${teacherIndex().length}.</p>`;
+    return;
+  }
+  const groups = searchAll(tokens).filter(g => g.items.length);
+  if (!groups.length){
+    box.innerHTML = `<p class="sempty">Ничего не нашлось по «${esc(input.value.trim())}».<br>Попробуй слово покороче или другую форму слова.</p>`;
+    return;
+  }
+  box.innerHTML = groups.map(g => {
+    const shown = searchMore[g.key] ? g.items : g.items.slice(0, SEARCH_LIMIT), rest = g.items.length - shown.length;
+    return `<div class="sgroup"><span>${g.title}</span><span>${g.items.length}</span></div>` + shown.join('') +
+      (rest > 0 ? `<button class="mini smore" data-act="searchmore" data-id="${g.key}">Показать ещё ${rest}</button>` : '');
+  }).join('');
+}
+
+function openSearch(){
+  const dlg = $('#searchDlg'); if (dlg.open) return;
+  searchMore = {}; $('#searchInput').value = ''; renderSearch();
+  dlg.showModal(); $('#searchInput').focus();
+}
+// Открыть конспект предмета и показать найденное место
+function focusNote(pos, len){
+  const ta = $('#notes'); if (!ta) return;
+  ta.scrollIntoView({ block:'center' });
+  const lh = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+  ta.scrollTop = Math.max(0, (ta.value.slice(0, pos).split('\n').length - 2) * lh);
+  if (matchMedia('(hover:hover)').matches){ ta.focus({ preventScroll:true }); ta.setSelectionRange(pos, pos + len); }
+}
+
+/* ---------- Google Диск ---------- */
+// Приложение хранит данные в папке «Мой универ» на твоём Диске, в файле moy-universitet-data.json.
+// Доступ только к файлам, которые создало само приложение (разрешение drive.file).
+const GAPI = 'https://www.googleapis.com/drive/v3', GUP = 'https://www.googleapis.com/upload/drive/v3';
+const DRIVE_FOLDER = 'Мой универ', DRIVE_FILE = 'moy-universitet-data.json';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+const DRIVE_DELAY = 8000;        // через сколько мс после последнего изменения отправлять на Диск
+const driveCfg = () => state.settings.drive;
+// Ключ приложения (Client ID) создаётся в Google Cloud один раз. Вставь его сюда между кавычками, и вводить его в настройках больше не придётся.
+const DRIVE_CLIENT_ID = '';
+const driveClientId = () => DRIVE_CLIENT_ID || driveCfg().clientId;
+const driveUi = { busy:false, msg:'', kind:'', quota:null, warned:false, email:'' };
+let driveToken = null, driveTokenExp = 0, driveTimer = null, driveLast = 0;
+
+const fmtBytes = b => {
+  b = +b; if (!b) return '0 Б';
+  const u = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']; let i = 0;
+  while (b >= 1024 && i < u.length - 1){ b /= 1024; i++; }
+  return (b >= 10 || i === 0 ? Math.round(b) : b.toFixed(1).replace('.', ',')) + ' ' + u[i];
+};
+function driveSay(msg, kind = ''){ driveUi.msg = msg; driveUi.kind = kind; }
+
+// Вызывается при любом изменении данных: помечаем «есть что отправить» и запускаем таймер
+function noteLocalChange(){
+  const d = state && state.settings && state.settings.drive;
+  if (!d || !d.connected) return;
+  d.dirty = true;
+  if (d.auto){ clearTimeout(driveTimer); driveTimer = setTimeout(() => driveRun('auto', true), DRIVE_DELAY); }
+}
+
+// Подгружаем скрипт входа Google, только когда он нужен
+function loadGis(){
+  return new Promise((resolve, reject) => {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = () => resolve(); s.onerror = () => reject(new Error('gis'));
+    document.head.appendChild(s);
+  });
+}
+// Получить ключ доступа. prompt: 'select_account' — выбрать аккаунт, '' — обычный вход, 'none' — тихо, без окон
+function requestToken(prompt, hint){
+  const d = driveCfg();
+  return loadGis().then(() => new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: driveClientId(), scope: DRIVE_SCOPE,
+      callback: resp => {
+        if (resp.error) return reject(new Error(resp.error));
+        if (!google.accounts.oauth2.hasGrantedAllScopes(resp, 'https://www.googleapis.com/auth/drive.file')) return reject(new Error('scope'));
+        driveToken = resp.access_token; driveTokenExp = Date.now() + (Number(resp.expires_in) - 60) * 1000;
+        resolve(driveToken);
+      },
+      error_callback: err => reject(new Error((err && err.type) || 'popup'))
+    });
+    client.requestAccessToken({ prompt, hint: hint || d.email || undefined });
+  }));
+}
+const tokenValid = () => !!driveToken && Date.now() < driveTokenExp;
+const validToken = () => tokenValid() ? Promise.resolve(driveToken) : requestToken('none');
+
+async function driveFetch(url, opts = {}){
+  const token = await validToken();
+  const r = await fetch(url, Object.assign({}, opts, { headers: Object.assign({}, opts.headers, { Authorization:'Bearer ' + token }) }));
+  if (r.status === 401){ driveToken = null; throw new Error('auth'); }
+  if (!r.ok){ const e = new Error('http' + r.status); e.status = r.status; try { e.body = await r.text(); } catch(_) {} throw e; }
+  return r;
+}
+// Человеческое объяснение ошибки
+function driveExplain(e){
+  const m = String((e && e.message) || e), body = String((e && e.body) || '');
+  if (m === 'scope') return 'Google не выдал доступ к Диску. При входе оставь отмеченной галочку доступа к Диску.';
+  if (m === 'auth' || /popup|interaction|login_required|consent|immediate|access_denied/i.test(m)) return 'Нужно подтвердить вход в Google. Нажми «Войти снова».';
+  if (m === 'gis') return 'Не удалось загрузить вход Google. Проверь интернет.';
+  if (e && e.status === 403 && /accessNotConfigured|has not been used|disabled/i.test(body)) return 'В проекте Google Cloud не включён Google Drive API. Включи его (шаг 2 инструкции).';
+  if (e && e.status === 403) return 'Google отказал в доступе (403). Проверь, что твой аккаунт добавлен в тестовые пользователи.';
+  if (e && e.status === 404) return 'Файл на Диске не найден. Нажми «Отправить на Диск».';
+  if (e && e.status === 429) return 'Google просит подождать: слишком много запросов. Попробуй чуть позже.';
+  if (e instanceof TypeError) return 'Нет связи с Google. Проверь интернет.';
+  return 'Ошибка Google Диска: ' + m;
+}
+
+// Находим (или создаём) папку и ищем в ней файл с данными
+async function driveLocate(){
+  const j = async r => (await r).json();
+  let folderId;
+  const fq = "mimeType='application/vnd.google-apps.folder' and name='" + DRIVE_FOLDER + "' and trashed=false";
+  const folders = await j(driveFetch(GAPI + '/files?fields=files(id)&q=' + encodeURIComponent(fq)));
+  if (folders.files && folders.files[0]) folderId = folders.files[0].id;
+  else folderId = (await j(driveFetch(GAPI + '/files?fields=id', { method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ name:DRIVE_FOLDER, mimeType:'application/vnd.google-apps.folder' }) }))).id;
+  const q = "name='" + DRIVE_FILE + "' and '" + folderId + "' in parents and trashed=false";
+  const files = await j(driveFetch(GAPI + '/files?fields=files(id,modifiedTime)&q=' + encodeURIComponent(q)));
+  return { folderId, file: (files.files && files.files[0]) || null };
+}
+// Что именно кладём на Диск. Не берём настройки этого устройства (вход, тема) и служебное.
+function drivePayload(){
+  const copy = JSON.parse(JSON.stringify(state));
+  delete copy.settings.drive; delete copy.settings.theme;
+  copy.alerts = []; copy.reminded = {};
+  return { format:'moy-universitet', v:1, savedAt:new Date().toISOString(), state:copy };
+}
+async function drivePush(loc){
+  const json = JSON.stringify(drivePayload());
+  let r;
+  if (loc.file){
+    r = await driveFetch(GUP + '/files/' + loc.file.id + '?uploadType=media&fields=id,modifiedTime',
+      { method:'PATCH', headers:{ 'Content-Type':'application/json' }, body:json });
+  } else {
+    const b = 'muni' + uid(), meta = JSON.stringify({ name:DRIVE_FILE, parents:[loc.folderId], mimeType:'application/json' });
+    r = await driveFetch(GUP + '/files?uploadType=multipart&fields=id,modifiedTime', { method:'POST',
+      headers:{ 'Content-Type':'multipart/related; boundary=' + b },
+      body:'--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta +
+           '\r\n--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + json + '\r\n--' + b + '--' });
+  }
+  const meta = await r.json(), d = driveCfg();
+  Object.assign(d, { lastRemote:meta.modifiedTime, dirty:false, conflict:false, lastSync:new Date().toISOString() });
+}
+async function drivePull(loc){
+  const obj = JSON.parse(await (await driveFetch(GAPI + '/files/' + loc.file.id + '?alt=media')).text());
+  const incoming = obj.state || obj;
+  if (!incoming || !Array.isArray(incoming.subjects) || !Array.isArray(incoming.lessons) || !Array.isArray(incoming.tasks))
+    throw new Error('Файл на Диске не похож на данные приложения');
+  const keep = { drive:driveCfg(), theme:state.settings.theme, alerts:state.alerts, reminded:state.reminded };
+  state = normalize(incoming);
+  state.settings.drive = keep.drive; state.settings.theme = keep.theme; state.alerts = keep.alerts; state.reminded = keep.reminded;
+  Object.assign(state.settings.drive, { lastRemote:loc.file.modifiedTime, dirty:false, conflict:false, lastSync:new Date().toISOString() });
+  openSubject = null; saveQuiet(); renderAll();
+}
+// mode: 'auto' — решить самой, 'push' — отправить на Диск, 'pull' — загрузить с Диска
+async function driveSync(mode){
+  const loc = await driveLocate();
+  if (mode === 'push'){ await drivePush(loc); return 'pushed'; }
+  if (mode === 'pull'){ if (!loc.file) throw Object.assign(new Error('http404'), { status:404 }); await drivePull(loc); return 'pulled'; }
+  const d = driveCfg();
+  if (!loc.file){ await drivePush(loc); return 'pushed'; }
+  if (!d.lastRemote){ d.conflict = true; return 'conflict'; }                // первая привязка, а на Диске уже есть данные
+  if (loc.file.modifiedTime === d.lastRemote){ if (d.dirty){ await drivePush(loc); return 'pushed'; } return 'same'; }
+  if (!d.dirty){ await drivePull(loc); return 'pulled'; }                    // на Диске новее, здесь ничего не менялось
+  d.conflict = true; return 'conflict';                                      // менялось и там, и тут
+}
+async function driveQuota(){
+  try { driveUi.quota = (await (await driveFetch(GAPI + '/about?fields=storageQuota')).json()).storageQuota || null; renderSettings(); } catch(e) {}
+}
+async function driveRun(mode, quiet){
+  if (!driveCfg().connected || driveUi.busy) return;
+  driveUi.busy = true; driveLast = Date.now(); clearTimeout(driveTimer);
+  if (!quiet) driveSay('Синхронизирую…'); renderSettings();
+  try {
+    const res = await driveSync(mode);
+    if (res === 'conflict'){
+      driveSay('На Диске другая версия, и здесь тоже есть изменения. Выбери, какую оставить: «Отправить на Диск» или «Загрузить с Диска».', 'err');
+      toast('Google Диск: версии разошлись, открой «Ещё»');
+    } else if (res === 'pulled'){
+      driveSay('Данные загружены с Диска.', 'ok'); if (quiet) toast('Данные обновлены с Google Диска');
+    } else if (res === 'pushed'){ driveSay('Сохранено на Диск.', 'ok'); }
+    else if (!quiet){ driveSay('Всё актуально.', 'ok'); }
+    driveQuota();
+  } catch(e){
+    driveSay(driveExplain(e), 'err');
+    if (quiet && !driveUi.warned){ driveUi.warned = true; toast('Google Диск: ' + driveExplain(e)); }
+  } finally { driveUi.busy = false; saveQuiet(); renderSettings(); }
+}
+
+async function driveConnect(){
+  const d = driveCfg(), mail = (driveUi.email || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return driveSay('Введи адрес своей почты Google, например name@gmail.com.', 'err'), renderSettings();
+  if (!driveClientId()) return driveSay('Сначала нужна первая настройка (один раз): открой «Первая настройка» ниже.', 'err'), renderSettings();
+  if (location.protocol === 'file:') return driveSay('Google не пускает вход со страницы, открытой как файл. Открой приложение по ссылке https://… или через http://localhost.', 'err'), renderSettings();
+  driveUi.busy = true; driveSay('Открываю вход Google…'); renderSettings();
+  try {
+    await requestToken('', mail);
+    const info = await (await driveFetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();
+    if ((info.email || '').toLowerCase() !== mail.toLowerCase()){
+      try { google.accounts.oauth2.revoke(driveToken, () => {}); } catch(_) {}
+      driveToken = null; driveTokenExp = 0;
+      throw new Error('mismatch:' + (info.email || ''));
+    }
+    Object.assign(d, { connected:true, email:info.email || mail, name:info.name || '', lastRemote:'', dirty:false, conflict:false });
+    saveQuiet(); driveUi.busy = false; driveUi.warned = false;
+    await driveRun('auto', false);
+  } catch(e){
+    const m = String(e.message);
+    driveSay(m.startsWith('mismatch:') ? 'В окне Google выбрана другая почта (' + m.slice(9) + '). Войди с адресом ' + mail + '.'
+      : /popup|access_denied/i.test(m) ? 'Вход отменён: окно Google закрыто или доступ не выдан. Попробуй ещё раз.' : driveExplain(e), 'err');
+  }
+  finally { driveUi.busy = false; saveQuiet(); renderSettings(); }
+}
+async function driveReauth(){
+  driveUi.busy = true; driveSay('Открываю вход Google…'); renderSettings();
+  try { await requestToken(''); driveUi.busy = false; driveUi.warned = false; await driveRun('auto', false); }
+  catch(e){ driveSay(driveExplain(e), 'err'); }
+  finally { driveUi.busy = false; renderSettings(); }
+}
+function driveDisconnect(){
+  if (!confirm('Отвязать аккаунт Google? Файл с данными на Диске останется на месте.')) return;
+  try { if (driveToken && typeof google !== 'undefined') google.accounts.oauth2.revoke(driveToken, () => {}); } catch(e) {}
+  driveToken = null; driveTokenExp = 0; clearTimeout(driveTimer);
+  Object.assign(driveCfg(), { connected:false, email:'', name:'', lastSync:'', lastRemote:'', dirty:false, conflict:false });
+  driveUi.msg = ''; driveUi.quota = null; saveQuiet(); renderSettings();
+  toast('Аккаунт отвязан. Файл на Диске остался на месте.');
+}
+
+// Блок настроек «Google Диск»
+function driveBlock(){
+  const d = driveCfg(), ui = driveUi, isFile = location.protocol === 'file:';
+  const dis = ui.busy ? 'disabled' : '';
+  const origin = isFile ? 'адрес сайта после выкладки (или http://localhost:8000 при локальном запуске)' : location.origin;
+  const msg = ui.msg ? `<p class="status ${ui.kind}">${esc(ui.msg)}</p>` : '';
+  const howto = `<details class="howto" ${d.clientId ? '' : 'open'}><summary>Первая настройка (один раз)</summary>
+      <p class="status">Google должен знать, какому приложению разрешать вход. Для этого один раз создаётся ключ приложения (Client ID). Дальше вход идёт только по твоей почте.</p>
+      <div class="optlabel">Client ID</div>
+      <input class="mono" id="driveClientId" placeholder="1234567890-abc.apps.googleusercontent.com" value="${esc(d.clientId)}" autocomplete="off" spellcheck="false">
+      <ol>
+      <li>Открой <b>console.cloud.google.com</b>, войди в свой Google-аккаунт и создай проект (название любое).</li>
+      <li>В меню «API и сервисы» → «Библиотека» найди <b>Google Drive API</b> и нажми «Включить».</li>
+      <li>«API и сервисы» → «Экран согласия OAuth» (в новом интерфейсе «Google Auth Platform»): тип <b>Внешний</b>, название приложения и твоя почта. В «Тестовых пользователях» добавь тот Google-аккаунт, который будешь привязывать.</li>
+      <li>«Учётные данные» → «Создать учётные данные» → <b>Идентификатор клиента OAuth</b> → тип «Веб-приложение». В «Разрешённых источниках JavaScript» добавь: <code>${esc(origin)}</code></li>
+      <li>Скопируй Client ID (он заканчивается на <code>.apps.googleusercontent.com</code>) и вставь в поле выше.</li></ol>
+      <p class="status">Названия кнопок в Google иногда меняются, но смысл тот же. При первом входе Google может написать «приложение не проверено»: это твоё собственное приложение, нажми «Дополнительно» → «Перейти».</p></details>`;
+
+  let body;
+  if (!d.connected){
+    body = `<p class="status" style="margin-top:0">Войди через свою почту Google, и данные приложения будут сохраняться в папке «${DRIVE_FOLDER}» на твоём Диске и подтягиваться на другом устройстве. Приложение видит только файлы, которые создало само.</p>
+      ${isFile ? '<div class="note"><span>Сейчас приложение открыто как файл. Google пускает вход только со страницы по адресу https:// или http://localhost, поэтому вход заработает после выкладки.</span></div>' : ''}
+      <div class="optlabel">Адрес почты Google</div>
+      <input type="email" id="driveEmail" placeholder="name@gmail.com" value="${esc(ui.email)}" autocomplete="email" autocapitalize="off" spellcheck="false">
+      ${msg}
+      <button class="btn" data-act="driveconnect" ${dis}>Войти через Google</button>
+      ${DRIVE_CLIENT_ID ? '' : howto}`;
+  } else {
+    const q = ui.quota ? `Занято на Диске: ${fmtBytes(ui.quota.usage)} из ${ui.quota.limit ? fmtBytes(ui.quota.limit) : 'без ограничений'}` : '';
+    const last = d.lastSync ? 'Последняя синхронизация: ' + new Date(d.lastSync).toLocaleString('ru-RU', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }) : 'Ещё не синхронизировалось';
+    body = `<div class="acct"><i class="ini">${esc((d.name || d.email || 'G').charAt(0).toUpperCase())}</i>
+        <div class="stext"><b>${esc(d.name || 'Аккаунт Google')}<span class="chipok">привязан</span></b><small>${esc(d.email)}</small></div></div>
+      <p class="status">${esc(last)}${d.dirty ? ' · есть изменения, ещё не отправленные на Диск' : ''}${q ? '<br>' + esc(q) : ''}<br>Папка на Диске: «${DRIVE_FOLDER}»</p>
+      ${msg}
+      ${d.conflict ? '<p class="status err">Версии разошлись. Выбери, какую оставить, кнопками ниже.</p>' : ''}
+      ${tokenValid() ? '' : `<button class="btn" data-act="drivereauth" ${dis}>Войти снова</button>`}
+      <div class="seg">
+        <button data-act="drivesync" ${dis}>Синхронизировать сейчас</button>
+        <button data-act="drivepush" ${dis}>Отправить на Диск</button>
+        <button data-act="drivepull" ${dis}>Загрузить с Диска</button>
+      </div>
+      <div class="setrow" style="margin-top:14px">
+        <div><b>Сохранять автоматически</b><small>Через несколько секунд после изменений, пока приложение открыто</small></div>
+        <button class="sw ${d.auto ? 'on' : ''}" role="switch" aria-checked="${d.auto}" aria-label="Сохранять автоматически" data-act="driveauto"><i></i></button>
+      </div>
+      <div class="seg"><button data-act="drivedisconnect" ${dis}>Отвязать аккаунт</button></div>`;
+  }
+  return `<h3>Google Диск</h3><div class="panel">${body}</div>`;
+}
+
+/* ---------- Оценки ---------- */
+const GRADE_KINDS = ['Контрольная', 'Лабораторная', 'Семинар', 'Практика', 'Тест', 'Реферат или эссе', 'Зачёт', 'Экзамен', 'Другое'];
+const fmtNum = n => (Math.round(n * 10) / 10).toString().replace('.', ',');
+const avgOf = list => list.length ? list.reduce((a, g) => a + g.value, 0) / list.length : null;
+const gradeClass = v => v >= 8 ? 'hi' : v < 4 ? 'bad' : '';
+
+function gradesHTML(s){
+  const list = s.grades.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return (list.length ? list.map(g => `<div class="item grade" data-act="editgrade" data-id="${esc(s.id)}" data-gid="${esc(g.id)}">
+      <span class="gv ${gradeClass(g.value)}">${fmtNum(g.value)}</span>
+      <div class="body"><b>${esc(g.kind)}</b><span>${g.date ? shortDate(g.date) : 'без даты'}${g.note ? ' · ' + esc(g.note) : ''}</span></div></div>`).join('')
+    : `<p class="empty">Оценок пока нет.</p>`) +
+    `<div class="seg"><button data-act="addgrade" data-id="${esc(s.id)}">+ Оценка</button></div>`;
+}
+function gradesOverview(){
+  if (!state.subjects.length) return `<p class="empty">Сначала добавь предмет.</p>`;
+  const all = state.subjects.flatMap(s => s.grades), av = avgOf(all);
+  const withG = state.subjects.filter(s => s.grades.length).length;
+  const head = `<div class="period"><b>${av === null ? 'Оценок пока нет' : 'Средний балл: ' + fmtNum(av)}</b>
+    <span>оценок: ${all.length} · предметов с оценками: ${withG} из ${state.subjects.length}</span>
+    ${av === null ? '' : `<div class="pbar"><i style="width:${Math.round(av * 10)}%"></i></div>`}</div>
+    <div class="seg"><button data-act="addgrade" data-id="">+ Оценка</button></div>`;
+  return head + state.subjects.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s => {
+    const a = avgOf(s.grades);
+    return `<div class="item grade" data-act="opensubj" data-id="${esc(s.id)}">
+      <span class="gv ${a === null ? 'none' : gradeClass(a)}">${a === null ? '—' : fmtNum(a)}</span>
+      <div class="body"><b>${esc(s.name)}</b><span><span class="chip" style="border-left:4px solid ${esc(s.color)}">${s.grades.length ? 'оценок: ' + s.grades.length : 'нет оценок'}</span></span></div></div>`;
+  }).join('');
+}
+function gradeForm(sid, g, pre){
+  if (!state.subjects.length){ alert('Сначала добавь предмет во вкладке «Предметы».'); return; }
+  const isNew = !g, base = pre || g || { value:'', kind:'Контрольная', date:iso(new Date()), note:'' };
+  openForm({
+    title: isNew ? 'Новая оценка' : 'Оценка',
+    fields: [
+      { name:'subjectId', label:'Предмет', type:'select', value:sid || state.subjects[0].id, options: state.subjects.map(x => [x.id, x.name]) },
+      { name:'value', label:'Оценка (от 0 до 10, можно 7,5)', value:String(base.value).replace('.', ','), required:true },
+      { name:'kind', label:'За что', type:'select', value:base.kind, options: GRADE_KINDS.map(k => [k, k]) },
+      { name:'date', label:'Дата', type:'date', value:base.date },
+      { name:'note', label:'Комментарий', value:base.note || '' }
+    ],
+    onSave: d => {
+      const v = parseFloat(String(d.value).replace(',', '.'));
+      if (!(v >= 0 && v <= 10)){
+        alert('Оценка должна быть числом от 0 до 10.');
+        gradeForm(d.subjectId, g, { value:d.value, kind:d.kind, date:d.date, note:d.note }); return;
+      }
+      const data = { value:Math.round(v * 10) / 10, kind:d.kind, date:d.date, note:d.note.trim() };
+      const target = state.subjects.find(x => x.id === d.subjectId);
+      if (isNew) target.grades.push({ id:uid(), ...data });
+      else {
+        const old = state.subjects.find(x => x.grades.includes(g));
+        if (old !== target){ old.grades = old.grades.filter(x => x !== g); target.grades.push(g); }
+        Object.assign(g, data);
+      }
+      commit();
+    },
+    onDelete: isNew ? null : () => { const old = state.subjects.find(x => x.grades.includes(g)); old.grades = old.grades.filter(x => x !== g); commit(); }
+  });
+}
+
+/* ---------- Сессия: экзамены и зачёты ---------- */
+// Экзамен в виде «задания со сроком»: так он попадает в календарь, шапку и напоминания
+const examItem = e => ({ id:'ex:' + e.id, eid:e.id, _exam:true, title:EXAM_KIND[e.kind] + ': ' + e.title,
+  subjectId:e.subjectId, due:e.date, type:'deadline', done:!!e.passed });
+const examItems = () => state.exams.filter(e => e.date).map(examItem);
+const calItems = () => [...state.tasks, ...examItems()];
+const findDeadline = id => {
+  if (String(id).startsWith('ex:')){ const e = state.exams.find(x => x.id === String(id).slice(3)); return e && examItem(e); }
+  return state.tasks.find(x => x.id === id);
+};
+const shortDate = d => new Date(d + 'T00:00:00').toLocaleDateString('ru-RU', { day:'numeric', month:'short' });
+const examSort = (a, b) => (a.passed - b.passed) || (a.date || '9999').localeCompare(b.date || '9999') || a.title.localeCompare(b.title);
+
+// Где мы сейчас в учебном году и когда ближайшая сессия
+function periodCard(){
+  const t = iso(new Date());
+  const cur = PERIODS.find(p => t >= p.from && t <= p.to);
+  const sess = PERIODS.find(p => (p.k === 'win' || p.k === 'sum') && p.to >= t);
+  let html = '';
+  if (cur){
+    const total = daysUntil(cur.to) - daysUntil(cur.from) + 1, left = daysUntil(cur.to);
+    const pct = Math.max(0, Math.min(100, Math.round((total - left) / total * 100)));
+    html += `<b>${esc(cur.name)}</b><span>до ${shortDate(cur.to)} · осталось ${left} ${plural(left, ['день', 'дня', 'дней'])}</span>
+      <div class="pbar"><i style="width:${pct}%"></i></div>`;
+  }
+  if (sess && sess !== cur){
+    const d = daysUntil(sess.from);
+    html += `<span>${esc(sess.name)}: ${shortDate(sess.from)} — ${shortDate(sess.to)} · через ${d} ${plural(d, ['день', 'дня', 'дней'])}</span>`;
+  }
+  return html ? `<div class="period">${html}</div>` : '';
+}
+
+function examRowHTML(e){
+  if (!e) return '';
+  const s = subj(e.subjectId), n = e.topics.length, d = e.topics.filter(t => t.done).length;
+  const when = e.date ? (e.passed ? shortDate(e.date) : dueLabel(e.date)) + (e.time ? ' · ' + esc(e.time) : '') : 'дата не назначена';
+  return `<div class="item exam ${e.passed ? 'done' : ''}" data-act="openexam" data-id="${esc(e.id)}">
+    <button class="chk ${e.passed ? 'on' : ''}" data-act="examtoggle" data-id="${esc(e.id)}" aria-label="${e.kind === 'exam' ? 'Сдан' : 'Зачтено'}">${e.passed ? '✓' : ''}</button>
+    <div class="body"><b>${esc(e.title)}</b>
+      <span><span class="chip" style="border-left:4px solid ${esc(s.color)}">${EXAM_KIND[e.kind]}</span>${when}${e.room ? ' · ' + esc(e.room) : ''}${e.passed && e.result ? ' · ' + esc(e.result) : ''}</span>
+      ${n ? `<div class="pbar"><i style="width:${Math.round(d / n * 100)}%"></i></div><small class="prog">Выучено ${d} из ${n}</small>` : ''}
+    </div></div>`;
+}
+
+function sessionHTML(){
+  if (openExam){
+    const e = state.exams.find(x => x.id === openExam);
+    if (e) return examPage(e);
+    openExam = null;
+  }
+  const list = state.exams.filter(e => e.sem === sessSem);
+  const group = (kind, title) => {
+    const a = list.filter(e => e.kind === kind).sort(examSort), done = a.filter(e => e.passed).length;
+    return `<h3>${title}${a.length ? ` · ${done} из ${a.length}` : ''}</h3>` + (a.length ? a.map(examRowHTML).join('') : `<p class="empty">Пока пусто.</p>`);
+  };
+  return periodCard() +
+    `<div class="seg">
+       <button data-act="sessem" data-id="1" class="${sessSem === 1 ? 'on' : ''}">1 семестр</button>
+       <button data-act="sessem" data-id="2" class="${sessSem === 2 ? 'on' : ''}">2 семестр</button>
+       <button data-act="addexam">+ Экзамен или зачёт</button></div>` +
+    group('exam', 'Экзамены') + group('credit', 'Зачёты');
+}
+
+function examPage(e){
+  const s = subj(e.subjectId), n = e.topics.length, d = e.topics.filter(t => t.done).length;
+  const left = e.date && !e.passed ? daysUntil(e.date) : null;
+  const info = [EXAM_KIND[e.kind], e.date ? shortDate(e.date) + (e.time ? ', ' + e.time : '') : 'дата не назначена', e.room,
+      left === null ? '' : left < 0 ? 'дата прошла' : left === 0 ? 'сегодня' : left === 1 ? 'завтра' : 'через ' + left + ' ' + plural(left, ['день', 'дня', 'дней']),
+      e.passed && e.result ? 'результат: ' + e.result : '']
+    .filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
+  return `<button class="btn ghost" data-act="examback">← Вся сессия</button>
+    <h2 class="subj-title" style="--c:${esc(s.color)}"><span class="dot"></span>${esc(e.title)}
+      <button class="mini" data-act="editexam" data-id="${esc(e.id)}">Изменить</button></h2>
+    <p style="margin:10px 0 0">${info}</p>
+    <div class="seg"><button data-act="examtoggle" data-id="${esc(e.id)}" class="${e.passed ? 'on' : ''}">${e.passed ? (e.kind === 'exam' ? '✓ Сдан' : '✓ Зачтено') : (e.kind === 'exam' ? 'Отметить: сдан' : 'Отметить: зачтено')}</button></div>
+    <h3>Подготовка${n ? ` · выучено ${d} из ${n}` : ''}</h3>
+    ${n ? `<div class="pbar"><i style="width:${Math.round(d / n * 100)}%"></i></div>` : ''}` +
+    (n ? e.topics.map(t => `<div class="item topic ${t.done ? 'done' : ''}">
+        <button class="chk ${t.done ? 'on' : ''}" data-act="topictoggle" data-id="${esc(e.id)}" data-tid="${esc(t.id)}" aria-label="Выучено">${t.done ? '✓' : ''}</button>
+        <div class="body"><b>${esc(t.text)}</b></div>
+        <button class="mini" data-act="topicdel" data-id="${esc(e.id)}" data-tid="${esc(t.id)}" aria-label="Убрать">×</button></div>`).join('')
+       : `<p class="empty">Добавь вопросы или билеты и отмечай, что уже выучено.</p>`) +
+    `<div class="addtopic"><input id="topicInput" data-id="${esc(e.id)}" placeholder="Вопрос или билет" autocomplete="off">
+       <button class="mini" data-act="addtopic" data-id="${esc(e.id)}">Добавить</button></div>
+     <div class="seg"><button data-act="bulktopics" data-id="${esc(e.id)}">Вставить список вопросов</button></div>
+     <h3>Заметки</h3>
+     <textarea id="examNotes" rows="6" placeholder="Шпаргалка, что спрашивает преподаватель, что повторить...">${esc(e.note)}</textarea>`;
+}
+
+function examForm(e, sem){
+  const isNew = !e;
+  e = e || { title:'', subjectId:'', kind:'exam', sem: sem || sessSem, date:'', time:'', room:'', result:'' };
+  openForm({
+    title: isNew ? 'Новый экзамен или зачёт' : 'Экзамен или зачёт',
+    fields: [
+      { name:'title', label:'Название', value:e.title, required:true },
+      { name:'kind', label:'Что это', type:'select', value:e.kind, options:[['exam','Экзамен'],['credit','Зачёт']] },
+      { name:'subjectId', label:'Предмет (для цвета в календаре)', type:'select', value:e.subjectId,
+        options:[['', 'Без предмета'], ...state.subjects.map(x => [x.id, x.name])] },
+      { name:'sem', label:'Семестр', type:'select', value:String(e.sem), options:[['1','1 семестр'],['2','2 семестр']] },
+      { name:'date', label:'Дата', type:'date', value:e.date },
+      { name:'time', label:'Время', type:'time', value:e.time },
+      { name:'room', label:'Аудитория', value:e.room },
+      { name:'result', label:'Результат (оценка или «зачтено»), если уже сдан', value:e.result }
+    ],
+    onSave: d => {
+      const data = { title:d.title.trim(), kind:d.kind, subjectId:d.subjectId, sem:+d.sem, date:d.date, time:d.time, room:d.room.trim(), result:d.result.trim() };
+      if (data.result) data.passed = true;
+      if (isNew) state.exams.push({ id:uid(), note:'', topics:[], passed:false, ...data });
+      else Object.assign(e, data);
+      sessSem = data.sem; taskView = 'session'; commit();
+    },
+    onDelete: isNew ? null : () => { state.exams = state.exams.filter(x => x !== e); openExam = null; commit(); }
+  });
+}
+function addTopic(eid){
+  const inp = document.getElementById('topicInput'), e = state.exams.find(x => x.id === eid);
+  if (!inp || !e || !inp.value.trim()) return;
+  e.topics.push({ id:uid(), text:inp.value.trim(), done:false }); commit();
+  const again = document.getElementById('topicInput'); if (again) again.focus();
+}
+function bulkTopics(eid){
+  const e = state.exams.find(x => x.id === eid); if (!e) return;
+  openForm({
+    title: 'Вставить список вопросов',
+    fields: [{ name:'list', label:'Каждый вопрос с новой строки (нумерацию можно оставить, я уберу)', type:'textarea', value:'' }],
+    onSave: d => {
+      d.list.split('\n').map(x => x.replace(/^\s*(?:\d+[.)]|[-–—•*])\s*/, '').trim()).filter(Boolean)
+        .forEach(t => e.topics.push({ id:uid(), text:t, done:false }));
+      commit();
+    }
+  });
+}
+
+/* ---------- Файлы предметов на Google Диске ---------- */
+// Файл загружается прямо из приложения в папку «Мой универ / Файлы» на Диске. В приложении хранится только запись о нём.
+const FILE_MAX = 50 * 1024 * 1024;
+const fileUi = { busy:{} };      // id предмета -> идёт загрузка
+function filesHTML(s){
+  const d = driveCfg(), list = s.files || [], busy = fileUi.busy[s.id];
+  const items = list.map(f => `<div class="item file"><div class="body"><b>${esc(f.name)}</b><small>${esc(fmtBytes(f.size))}</small></div>
+      <button class="mini" data-act="openfile" data-id="${esc(s.id)}" data-fid="${esc(f.id)}">Открыть</button>
+      <button class="mini" data-act="delfile" data-id="${esc(s.id)}" data-fid="${esc(f.id)}" aria-label="Удалить файл">×</button></div>`).join('');
+  if (!d.connected)
+    return items + `<p class="empty">Чтобы прикреплять файлы, привяжи Google Диск. <button class="mini" data-act="tab" data-id="settings">Открыть «Ещё»</button></p>`;
+  return (items || '<p class="empty">Файлов пока нет.</p>') +
+    `<label class="btn attach ${busy ? 'dis' : ''}">${busy ? 'Загружаю…' : '+ Прикрепить файл'}<input type="file" id="fileInput" data-subj="${esc(s.id)}" multiple hidden ${busy ? 'disabled' : ''}></label>
+     <p class="attach-note">Файлы хранятся в твоём Google Диске (папка «${DRIVE_FOLDER} / Файлы») и открываются прямо здесь. До ${FILE_MAX / 1048576} МБ каждый.</p>`;
+}
+async function driveFilesFolder(){
+  if (driveUi.filesFolder) return driveUi.filesFolder;
+  const j = async r => (await r).json();
+  const root = (await driveLocate()).folderId;
+  const q = "mimeType='application/vnd.google-apps.folder' and name='Файлы' and '" + root + "' in parents and trashed=false";
+  const f = await j(driveFetch(GAPI + '/files?fields=files(id)&q=' + encodeURIComponent(q)));
+  let id = f.files && f.files[0] && f.files[0].id;
+  if (!id) id = (await j(driveFetch(GAPI + '/files?fields=id', { method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ name:'Файлы', mimeType:'application/vnd.google-apps.folder', parents:[root] }) }))).id;
+  return driveUi.filesFolder = id;
+}
+async function driveUploadOne(file, retried){
+  const folder = await driveFilesFolder();
+  const b = 'muni' + uid(), meta = JSON.stringify({ name:file.name, parents:[folder] });
+  const body = new Blob(['--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + b +
+    '\r\nContent-Type: ' + (file.type || 'application/octet-stream') + '\r\n\r\n', file, '\r\n--' + b + '--']);
+  try {
+    return await (await driveFetch(GUP + '/files?uploadType=multipart&fields=id,name', { method:'POST',
+      headers:{ 'Content-Type':'multipart/related; boundary=' + b }, body })).json();
+  } catch(e){
+    if (e.status === 404 && !retried){ driveUi.filesFolder = null; return driveUploadOne(file, true); }   // папку могли удалить
+    throw e;
+  }
+}
+async function uploadFiles(subjId, list){
+  const s = state.subjects.find(x => x.id === subjId);
+  if (!s || !list.length || fileUi.busy[subjId]) return;
+  if (!driveCfg().connected) return toast('Сначала привяжи Google Диск в «Ещё»');
+  fileUi.busy[subjId] = true; renderAll();
+  let ok = 0; const bad = [];
+  for (const f of list){
+    if (f.size > FILE_MAX){ bad.push(f.name + ': больше ' + FILE_MAX / 1048576 + ' МБ'); continue; }
+    try {
+      const m = await driveUploadOne(f);
+      (s.files = s.files || []).push({ id:uid(), name:f.name, size:f.size, type:f.type || '', driveId:m.id, added:new Date().toISOString() }); ok++;
+    } catch(e){ bad.push(f.name + ': ' + driveExplain(e)); }
+  }
+  delete fileUi.busy[subjId]; commit();
+  toast((ok ? 'Прикреплено файлов: ' + ok + '. ' : '') + (bad.length ? 'Не получилось: ' + bad.join('; ') : ''));
+}
+async function openDriveFile(subjId, fid){
+  const f = (state.subjects.find(x => x.id === subjId) || { files:[] }).files.find(x => x.id === fid);
+  if (!f) return;
+  const preview = /^(image\/|application\/pdf|text\/plain)/.test(f.type);
+  const w = preview ? window.open('', '_blank') : null;       // вкладку открываем сразу, иначе браузер её заблокирует
+  try {
+    let blob = await (await driveFetch(GAPI + '/files/' + f.driveId + '?alt=media')).blob();
+    if (/^text\//.test(blob.type) && !/charset/i.test(blob.type)) blob = new Blob([blob], { type:blob.type + ';charset=utf-8' });   // чтобы кириллица не ломалась
+    const url = URL.createObjectURL(blob);
+    if (w) w.location.href = url;
+    else { const a = document.createElement('a'); a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); }
+    setTimeout(() => URL.revokeObjectURL(url), 300000);
+  } catch(e){
+    if (w) w.close();
+    toast(e.status === 404 ? 'Файла уже нет на Диске. Убери его из списка кнопкой ×.' : driveExplain(e));
+  }
+}
+async function delDriveFile(subjId, fid){
+  const s = state.subjects.find(x => x.id === subjId), f = s && s.files.find(x => x.id === fid);
+  if (!f) return;
+  const link = driveCfg().connected;
+  if (!confirm(link ? 'Удалить «' + f.name + '» и из приложения, и с Google Диска?' : 'Убрать «' + f.name + '» из списка? Сам файл на Диске останется.')) return;
+  if (link){
+    try { await driveFetch(GAPI + '/files/' + f.driveId, { method:'DELETE' }); }
+    catch(e){ if (e.status !== 404){ toast(driveExplain(e)); return; } }
+  }
+  s.files = s.files.filter(x => x.id !== fid); commit();
+}
+
+/* ---------- Установка как приложение (PWA) ---------- */
+let installEvt = null;                    // событие браузера «можно установить» (Chrome, Edge, Android)
+const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; renderSettings(); });
+window.addEventListener('appinstalled', () => { installEvt = null; toast('Приложение установлено'); renderSettings(); });
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol))
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+
+function installBlock(){
+  let body;
+  if (isStandalone()){
+    body = `<p class="status ok" style="margin:0">Готово: приложение установлено и открыто как отдельное окно, без адресной строки.</p>`;
+  } else if (location.protocol === 'file:'){
+    body = `<p class="status" style="margin:0">Установка работает только когда сайт выложен в интернет (адрес вида https://…). Сейчас страница открыта как файл. Как выложить, я описал в инструкции к архиву.</p>`;
+  } else if (installEvt){
+    body = `<p class="status" style="margin:0">Иконка появится на экране телефона или на рабочем столе, а приложение будет открываться отдельным окном и работать без интернета.</p>
+      <button class="btn" data-act="installapp">Установить приложение</button>`;
+  } else if (isIOS){
+    body = `<p class="status" style="margin:0">На iPhone и iPad установка делается вручную, в Safari:</p>
+      <ol class="step-list"><li>Нажми кнопку <b>«Поделиться»</b> (квадрат со стрелкой).</li><li>Выбери <b>«На экран “Домой”»</b>.</li><li>Нажми <b>«Добавить»</b>.</li></ol>`;
+  } else {
+    body = `<p class="status" style="margin:0">Если кнопки установки нет, браузер пока не предлагает её. Попробуй так:</p>
+      <ol class="step-list"><li><b>Android, Chrome:</b> меню ⋮ → «Установить приложение» или «Добавить на главный экран».</li>
+      <li><b>Компьютер, Chrome или Edge:</b> значок установки в правой части адресной строки или меню → «Установить “Мой универ”».</li></ol>`;
+  }
+  return `<h3>Установка как приложение</h3><div class="panel">${body}</div>`;
+}
+
+/* ---------- Напоминания о дедлайнах ---------- */
+const REMIND_DAYS = [[0,'В день срока'],[1,'За 1 день'],[2,'За 2 дня'],[3,'За 3 дня'],[7,'За неделю']];
+const hasNotif = () => typeof Notification !== 'undefined';
+const whenText = d => d === 0 ? 'срок сегодня' : d === 1 ? 'срок завтра' : 'срок через ' + d + ' ' + plural(d, ['день', 'дня', 'дней']);
+
+// Уведомление браузера. Вернёт true, если получилось показать.
+function browserNotify(title, body){
+  if (!hasNotif() || Notification.permission !== 'granted') return false;
+  try { new Notification(title, { body, tag:'moy-univer' }); return true; } catch(e) { return false; }
+}
+// Спросить у браузера разрешение (работает только по нажатию кнопки)
+function askPermission(){
+  try {
+    if (hasNotif() && Notification.permission === 'default'){
+      const r = Notification.requestPermission();
+      if (r && r.then) r.then(() => renderAll());
+    }
+  } catch(e) {}
+}
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+// Проверка: пора ли о чём-то напомнить? Запускается при открытии и каждую минуту.
+function checkReminders(){
+  const n = state.settings.notify;
+  if (!n.on || !n.days.length) return;
+  const now = new Date(), todayISO = iso(now);
+  const [h, m] = (n.time || '09:00').split(':').map(Number);
+  if (now.getHours() * 60 + now.getMinutes() < h * 60 + m) return;      // ещё рано
+
+  // стираем старые отметки (старше 45 дней)
+  const limit = iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 45));
+  Object.keys(state.reminded).forEach(k => { if (k.split('|')[2] < limit) delete state.reminded[k]; });
+
+  const fresh = [];
+  [...state.tasks, ...examItems()].forEach(t => {
+    if (t.done || !t.due) return;
+    if (n.scope === 'deadline' && t.type !== 'deadline') return;
+    const d = daysUntil(t.due);
+    if (!n.days.includes(d)) return;
+    const key = t.id + '|' + d + '|' + todayISO;
+    if (state.reminded[key]) return;                                    // сегодня уже напоминали
+    state.reminded[key] = true;
+    state.alerts.push({ key, taskId:t.id });
+    fresh.push(t);
+  });
+  if (!fresh.length) return;
+  saveQuiet(); renderAlerts();
+
+  const line = t => t.title + ' · ' + subj(t.subjectId).name + ' · ' + whenText(daysUntil(t.due));
+  if (fresh.length === 1) browserNotify('Дедлайн: ' + fresh[0].title, line(fresh[0]));
+  else browserNotify('Дедлайны: ' + fresh.length, fresh.map(line).join('\n'));
+}
+
+// Плашки с напоминаниями вверху страницы
+function renderAlerts(){
+  const seen = new Set();
+  const list = state.alerts.filter(a => {
+    const t = findDeadline(a.taskId);
+    if (!t || t.done || seen.has(a.taskId)) return false;
+    seen.add(a.taskId); return true;
+  });
+  const bell = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+  $('#alerts').innerHTML = list.map(a => {
+    const t = findDeadline(a.taskId);
+    return `<div class="alert" data-act="${t._exam ? 'openexam' : 'edittask'}" data-id="${esc(t._exam ? t.eid : t.id)}">${bell}
+      <div class="body"><b>${esc(t.title)}</b><span>${esc(subj(t.subjectId).name)} · ${whenText(daysUntil(t.due))}</span></div>
+      <button class="mini" data-act="alertdel" data-id="${esc(a.key)}" aria-label="Скрыть">✕</button></div>`;
+  }).join('');
+}
+
+// Блок настроек уведомлений
+function notifyBlock(){
+  const n = state.settings.notify;
+  const perm = hasNotif() ? Notification.permission : 'unsupported';
+  const status = {
+    granted:     ['ok', 'Уведомления браузера разрешены.'],
+    default:     ['',   'Браузер ещё не спрашивал разрешение на уведомления.'],
+    denied:      ['',   'Браузер заблокировал уведомления. Разреши их в настройках сайта (значок рядом с адресной строкой). Пока они заблокированы, напоминания показываются внутри приложения.'],
+    unsupported: ['',   'Этот браузер не умеет показывать уведомления, поэтому напоминания будут появляться внутри приложения.']
+  }[perm];
+  const days  = REMIND_DAYS.map(([d, t]) => `<button data-act="ndays" data-id="${d}" class="${n.days.includes(d) ? 'on' : ''}">${t}</button>`).join('');
+  const scope = [['all', 'Все задания со сроком'], ['deadline', 'Только дедлайны']]
+    .map(([k, t]) => `<button data-act="nscope" data-id="${k}" class="${n.scope === k ? 'on' : ''}">${t}</button>`).join('');
+  return `<h3>Уведомления о дедлайнах</h3>
+    <div class="panel">
+      <div class="setrow">
+        <div><b>Напоминать о дедлайнах</b><small>Сообщение появится в приложении и, если разрешишь, в браузере</small></div>
+        <button class="sw ${n.on ? 'on' : ''}" role="switch" aria-checked="${n.on}" aria-label="Напоминать о дедлайнах" data-act="notifytoggle"><i></i></button>
+      </div>
+      <div class="opts ${n.on ? '' : 'off'}">
+        <div class="optlabel">Когда напоминать (можно выбрать несколько)</div>
+        <div class="seg">${days}</div>
+        ${n.days.length ? '' : '<p class="status">Выбери хотя бы один вариант, иначе напоминаний не будет.</p>'}
+        <div class="optlabel">Во сколько</div>
+        <input type="time" id="notifyTime" value="${esc(n.time)}">
+        <div class="optlabel">О чём напоминать</div>
+        <div class="seg">${scope}</div>
+      </div>
+      <p class="status ${status[0]}">${status[1]}</p>
+      <div class="seg">
+        ${perm === 'default' ? '<button data-act="notifyperm">Разрешить уведомления</button>' : ''}
+        <button data-act="notifytest">Проверить</button>
+      </div>
+      <p class="status">Напоминания приходят, пока приложение открыто в браузере (вкладка может быть свёрнута). Чтобы они приходили и при закрытом приложении, нужна выкладка в интернет, это следующий этап.</p>
+    </div>`;
+}
+
+/* ---------- Ещё (настройки и резервная копия) ---------- */
+function renderSettings(){
+  const th = state.settings.theme, grp = state.settings.group;
+  const groups = [...new Set(state.lessons.flatMap(l => l.groups || []))].sort();
+  const groupBlock = groups.length > 1
+    ? `<h3>Моя группа</h3><div class="seg">` + [['all','Все группы'], ...groups.map(g => [g, g])]
+        .map(([k, t]) => `<button data-act="group" data-id="${esc(k)}" class="${grp===k?'on':''}">${esc(t)}</button>`).join('') + `</div>`
+    : '';
+  $('#tab-settings').innerHTML =
+    `<h3>Тема оформления</h3>
+     <div class="seg">` + [['light','Светлая'],['dark','Тёмная']]
+        .map(([k,t]) => `<button data-act="theme" data-id="${k}" class="${th===k?'on':''}">${t}</button>`).join('') + `</div>
+
+     ${notifyBlock()}
+
+     ${driveBlock()}
+
+     ${installBlock()}
+
+     ${groupBlock}
+
+     <h3>Резервная копия</h3>
+     <p class="empty">Данные лежат в этом браузере. Если очистишь его, они пропадут, поэтому иногда скачивай копию.</p>
+     <div class="seg">
+       <button data-act="export">Скачать копию</button>
+       <button data-act="import">Загрузить копию</button>
+     </div>
+     <input type="file" id="importFile" accept="application/json" hidden>
+
+     <h3>Опасная зона</h3>
+     <div class="seg">
+       ${hasExamples() ? '<button data-act="clearex">Стереть примеры</button>' : ''}
+       <button data-act="reset">Стереть всё</button>
+     </div>`;
+}
+
+/* =========================================================
+   4. ОКНО РЕДАКТИРОВАНИЯ
+   openForm строит форму по списку полей и вызывает onSave / onDelete
+   ========================================================= */
+function openForm({ title, fields, onSave, onDelete }){
+  const dlg = $('#dlg'), form = $('#dlgForm');
+  form.innerHTML = `<h3>${esc(title)}</h3>` + fields.map(f => {
+    let input;
+    if (f.type === 'select'){
+      input = `<select name="${f.name}">` + f.options.map(o =>
+        `<option value="${esc(o[0])}" ${o[0] === f.value ? 'selected' : ''}>${esc(o[1])}</option>`).join('') + `</select>`;
+    } else if (f.type === 'textarea'){
+      input = `<textarea name="${f.name}" rows="4">${esc(f.value)}</textarea>`;
+    } else {
+      input = `<input name="${f.name}" type="${f.type || 'text'}" value="${esc(f.value)}" ${f.required ? 'required' : ''}>`;
+    }
+    return `<label>${esc(f.label)}${input}</label>`;
+  }).join('') +
+  `<div class="row">
+     <button type="button" class="btn ghost" id="dlgCancel">Отмена</button>
+     ${onDelete ? '<button type="button" class="btn danger" id="dlgDel">Удалить</button>' : ''}
+     <button type="submit" class="btn">Сохранить</button>
+   </div>`;
+
+  form.onsubmit = e => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    dlg.close(); onSave(data);
+  };
+  $('#dlgCancel').onclick = () => dlg.close();
+  if (onDelete) $('#dlgDel').onclick = () => { dlg.close(); onDelete(); };
+  dlg.showModal();
+}
+
+/* ---------- Формы: пара, задание, предмет, ссылка ---------- */
+// '2026-11-02' → '02.11'  и обратно
+const datesToText = l => (l.dates || []).map(s => s.slice(8, 10) + '.' + s.slice(5, 7)).join(', ');
+function parseDates(text){
+  const y = new Date().getFullYear();
+  return (text || '').split(/[,;\s]+/).filter(Boolean).map(p => {
+    const m = p.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?$/);
+    return m ? (m[3] || y) + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : null;
+  }).filter(Boolean);
+}
+
+function lessonForm(l, dayISO){
+  if (!state.subjects.length){ alert('Сначала добавь предмет во вкладке «Предметы».'); return; }
+  const isNew = !l;
+  l = l || {
+    day: dayISO ? (new Date(dayISO + 'T00:00:00').getDay() + 6) % 7 : todayIdx(),
+    start:'09:00', end:'10:30', subjectId: state.subjects[0].id,
+    room:'', week:'all', kind:'', teacher:'', groups:[], dates:[]
+  };
+  openForm({
+    title: isNew ? 'Новая пара' : 'Пара',
+    fields: [
+      { name:'day', label:'День недели', type:'select', value:String(l.day), options: DAYS.map((d, i) => [String(i), d]) },
+      { name:'start', label:'Начало', type:'time', value:l.start, required:true },
+      { name:'end',   label:'Конец',  type:'time', value:l.end,   required:true },
+      { name:'subjectId', label:'Предмет', type:'select', value:l.subjectId, options: state.subjects.map(s => [s.id, s.name]) },
+      { name:'kind', label:'Тип (ЛК, СЕМ, ПЗ, ЛЗ...)', value:l.kind || '' },
+      { name:'room', label:'Аудитория', value:l.room },
+      { name:'teacher', label:'Преподаватель', value:l.teacher || '' },
+      { name:'dates', label:'Даты (пусто = каждую неделю), например 02.11, 16.11', value:datesToText(l) }
+    ],
+    onSave: d => {
+      const data = {
+        day:+d.day, start:d.start, end:d.end, subjectId:d.subjectId,
+        kind:d.kind.trim(), room:d.room, teacher:d.teacher,
+        dates: parseDates(d.dates)      // группа и чётность недели у существующих пар остаются как были
+      };
+      if (isNew) state.lessons.push({ id:uid(), groups:[], week:'all', ...data });
+      else Object.assign(l, data);
+      commit();
+    },
+    onDelete: isNew ? null : () => { state.lessons = state.lessons.filter(x => x !== l); commit(); }
+  });
+}
+
+function taskForm(t, subjectId, dueISO){
+  const isNew = !t;
+  t = t || { title:'', subjectId: subjectId || '', due: dueISO || '', type:'hw', done:false };
+  openForm({
+    title: isNew ? 'Новое задание' : 'Задание',
+    fields: [
+      { name:'title', label:'Что сделать', value:t.title, required:true },
+      { name:'type', label:'Тип', type:'select', value:t.type, options:[['hw','Домашнее задание'],['deadline','Дедлайн']] },
+      { name:'subjectId', label:'Предмет', type:'select', value:t.subjectId,
+        options:[['', 'Без предмета'], ...state.subjects.map(s => [s.id, s.name])] },
+      { name:'due', label:'Срок', type:'date', value:t.due }
+    ],
+    onSave: d => {
+      if (isNew) state.tasks.push({ id:uid(), ...d, done:false });
+      else Object.assign(t, d);
+      commit();
+    },
+    onDelete: isNew ? null : () => { state.tasks = state.tasks.filter(x => x !== t); commit(); }
+  });
+}
+
+function subjectForm(s){
+  const isNew = !s;
+  s = s || { name:'', color:'#c8553d' };
+  openForm({
+    title: isNew ? 'Новый предмет' : 'Предмет',
+    fields: [
+      { name:'name',  label:'Название', value:s.name, required:true },
+      { name:'color', label:'Цвет',     type:'color', value:s.color }
+    ],
+    onSave: d => {
+      if (isNew) state.subjects.push({ id:uid(), ...d, notes:'', links:[], files:[], grades:[] });
+      else Object.assign(s, d);
+      commit();
+    },
+    onDelete: isNew ? null : () => {
+      if (!confirm('Удалить предмет вместе с заметками и ссылками? Пары и задания останутся без предмета.')) return;
+      state.subjects = state.subjects.filter(x => x !== s);
+      openSubject = null; commit();
+    }
+  });
+}
+
+function linkForm(s){
+  openForm({
+    title: 'Новая ссылка',
+    fields: [
+      { name:'title', label:'Название', value:'', required:true },
+      { name:'url',   label:'Ссылка (Google Диск, Яндекс Диск, сайт...)', type:'url', value:'', required:true }
+    ],
+    onSave: d => { s.links.push({ title:d.title, url:d.url }); commit(); }
+  });
+}
+
+/* =========================================================
+   5. КЛИКИ
+   Один обработчик на всю страницу: смотрим на data-act у кнопки,
+   по которой нажали, и решаем, что делать.
+   ========================================================= */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+
+  if (act === 'tab')       { currentTab = id; if (id !== 'subjects') openSubject = null; renderAll(); }
+  else if (act === 'week') { state.settings.week = id; commit(); }
+  else if (act === 'subjview'){ subjView = id; renderAll(); }
+  else if (act === 'addgrade'){ gradeForm(id); }
+  else if (act === 'editgrade'){ const sj = state.subjects.find(x => x.id === id); if (sj) gradeForm(id, sj.grades.find(x => x.id === el.dataset.gid)); }
+  else if (act === 'taskview'){ taskView = id; openExam = null; renderAll(); }
+  else if (act === 'sessem'){ sessSem = +id; renderAll(); }
+  else if (act === 'addexam'){ examForm(null); }
+  else if (act === 'openexam'){ openExam = id; taskView = 'session'; currentTab = 'tasks'; renderAll(); window.scrollTo(0, 0); }
+  else if (act === 'examback'){ openExam = null; renderAll(); }
+  else if (act === 'editexam'){ examForm(state.exams.find(x => x.id === id)); }
+  else if (act === 'examtoggle'){ const x = state.exams.find(e => e.id === id); if (x){ x.passed = !x.passed; commit(); } }
+  else if (act === 'addtopic'){ addTopic(id); }
+  else if (act === 'bulktopics'){ bulkTopics(id); }
+  else if (act === 'topictoggle'){
+    const t = (state.exams.find(e => e.id === id) || { topics:[] }).topics.find(x => x.id === el.dataset.tid); if (t){ t.done = !t.done; commit(); }
+  }
+  else if (act === 'topicdel'){
+    const x = state.exams.find(e => e.id === id); if (x){ x.topics = x.topics.filter(t => t.id !== el.dataset.tid); commit(); }
+  }
+  else if (act === 'showdone') { state.settings.showDone = (id === '1'); commit(); }
+  else if (act === 'theme')    { state.settings.theme = id; commit(); }
+  else if (act === 'addlesson'){ lessonForm(null, id); }
+  else if (act === 'group'){ state.settings.group = id; commit(); }
+  else if (act === 'opensearch'){ openSearch(); }
+  else if (act === 'searchclose'){ $('#searchDlg').close(); }
+  else if (act === 'searchclear'){ const i = $('#searchInput'); i.value = ''; renderSearch(); i.focus(); }
+  else if (act === 'searchmore'){ searchMore[id] = true; renderSearch(); }
+  else if (act === 'sr'){                          // нажали на результат поиска
+    const kind = el.dataset.kind;
+    $('#searchDlg').close();
+    if (kind === 'task'){ taskForm(state.tasks.find(t => t.id === id)); }
+    else if (kind === 'subj' || kind === 'note'){
+      currentTab = 'subjects'; openSubject = id; renderAll(); window.scrollTo({ top:0 });
+      if (kind === 'note') focusNote(+el.dataset.pos, +el.dataset.len);
+    }
+    else if (kind === 'teacher'){                  // показываем неделю с его ближайшей парой
+      currentTab = 'week'; openSubject = null;
+      weekStart = el.dataset.date ? mondayOf(new Date(el.dataset.date + 'T00:00:00')) : initialWeekStart();
+      renderAll(); window.scrollTo({ top:0 });
+    }
+  }
+  else if (act === 'installapp'){
+    if (installEvt){ const ev = installEvt; installEvt = null; ev.prompt(); ev.userChoice.finally(renderSettings); renderSettings(); }
+  }
+  else if (act === 'driveconnect'){ driveConnect(); }
+  else if (act === 'drivereauth'){ driveReauth(); }
+  else if (act === 'drivesync'){ driveRun('auto', false); }
+  else if (act === 'drivepush'){ if (confirm('Перезаписать данные на Google Диске версией с этого устройства?')) driveRun('push', false); }
+  else if (act === 'drivepull'){ if (confirm('Заменить данные на этом устройстве версией с Google Диска?')) driveRun('pull', false); }
+  else if (act === 'driveauto'){
+    const d = driveCfg(); d.auto = !d.auto; saveQuiet(); renderSettings();
+    if (d.auto && d.dirty) driveRun('auto', true);
+  }
+  else if (act === 'drivedisconnect'){ driveDisconnect(); }
+  else if (act === 'notifytoggle'){
+    const n = state.settings.notify; n.on = !n.on;
+    if (n.on) askPermission();                    // спрашиваем разрешение у браузера
+    else state.alerts = [];                       // выключили — убираем плашки
+    commit(); checkReminders();
+  }
+  else if (act === 'ndays'){
+    const n = state.settings.notify, d = +id;
+    n.days = n.days.includes(d) ? n.days.filter(x => x !== d) : [...n.days, d].sort((a, b) => a - b);
+    commit(); checkReminders();
+  }
+  else if (act === 'nscope'){ state.settings.notify.scope = id; commit(); checkReminders(); }
+  else if (act === 'notifyperm'){ askPermission(); }
+  else if (act === 'notifytest'){
+    const ok = browserNotify('Мой универ', 'Так будут выглядеть напоминания о дедлайнах');
+    toast(ok ? 'Тестовое уведомление отправлено' : 'Браузер не показывает уведомления, напоминания будут внутри приложения');
+  }
+  else if (act === 'alertdel'){
+    const a = state.alerts.find(x => x.key === id);
+    state.alerts = state.alerts.filter(x => !a || x.taskId !== a.taskId); saveQuiet(); renderAlerts();
+  }
+  else if (act === 'calprev'){ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderAll(); }
+  else if (act === 'calnext'){ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderAll(); }
+  else if (act === 'caltoday'){ calMonth = monthStart(new Date()); calSel = iso(new Date()); renderAll(); }
+  else if (act === 'calday'){
+    calSel = id;
+    const d = new Date(id + 'T00:00:00');
+    if (d.getMonth() !== calMonth.getMonth()) calMonth = monthStart(d);   // нажала на серый день соседнего месяца
+    renderAll();
+  }
+  else if (act === 'caladd'){ taskForm(null, null, calSel); }
+  else if (act === 'wkprev'){ weekStart.setDate(weekStart.getDate() - 7); renderAll(); }
+  else if (act === 'wknext'){ weekStart.setDate(weekStart.getDate() + 7); renderAll(); }
+  else if (act === 'wktoday'){ weekStart = initialWeekStart(); renderAll(); }
+  else if (act === 'editlesson'){ lessonForm(state.lessons.find(l => l.id === id)); }
+  else if (act === 'toggle'){
+    const t = state.tasks.find(t => t.id === id); t.done = !t.done; commit();
+  }
+  else if (act === 'edittask'){ taskForm(state.tasks.find(t => t.id === id)); }
+  else if (act === 'opensubj'){ openSubject = id; renderAll(); }
+  else if (act === 'back')    { openSubject = null; renderAll(); }
+  else if (act === 'editsubj'){ subjectForm(state.subjects.find(s => s.id === id)); }
+  else if (act === 'openfile'){ openDriveFile(id, el.dataset.fid); }
+  else if (act === 'delfile'){ delDriveFile(id, el.dataset.fid); }
+  else if (act === 'dellink'){
+    state.subjects.find(s => s.id === id).links.splice(+el.dataset.i, 1); commit();
+  }
+  else if (act === 'fab'){
+    if (currentTab === 'week')  lessonForm(null);
+    if (currentTab === 'tasks') taskView === 'session' ? examForm(null) : taskForm(null);
+    if (currentTab === 'calendar') taskForm(null, null, calSel);
+    if (currentTab === 'subjects'){
+      const s = state.subjects.find(x => x.id === openSubject);
+      s ? linkForm(s) : subjView === 'grades' ? gradeForm('') : subjectForm(null);
+    }
+  }
+  else if (act === 'clearex'){
+    if (!confirm('Стереть все примеры? Твои собственные записи останутся.')) return;
+    state.subjects = state.subjects.filter(x => !x.ex);
+    state.lessons  = state.lessons.filter(x => !x.ex);
+    state.tasks    = state.tasks.filter(x => !x.ex);
+    state.dayoffs  = state.dayoffs.filter(x => !x.ex);
+    openSubject = null; commit();
+  }
+  else if (act === 'reset'){
+    if (!confirm('Стереть ВСЁ без возможности вернуть? Лучше сначала скачай копию.')) return;
+    state = normalize({}); openSubject = null; commit();
+  }
+  else if (act === 'export'){
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'moy-universitet-' + iso(new Date()) + '.json';
+    a.click(); URL.revokeObjectURL(a.href);
+  }
+  else if (act === 'import'){ $('#importFile').click(); }
+});
+
+// Конспект сохраняется сам, пока ты печатаешь
+document.addEventListener('input', e => {
+  if (e.target.id === 'notes'){
+    const s = state.subjects.find(x => x.id === openSubject);
+    if (s){ s.notes = e.target.value; save(); }
+  }
+  if (e.target.id === 'examNotes'){
+    const x = state.exams.find(t => t.id === openExam);
+    if (x){ x.note = e.target.value; save(); }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'topicInput'){ e.preventDefault(); addTopic(e.target.dataset.id); }
+});
+
+// Загрузка резервной копии
+document.addEventListener('change', e => {
+  if (e.target.id !== 'importFile' || !e.target.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const obj = JSON.parse(reader.result);
+      if (!Array.isArray(obj.subjects) || !Array.isArray(obj.lessons) || !Array.isArray(obj.tasks)) throw new Error();
+      if (!confirm('Заменить текущие данные данными из копии?')) return;
+      state = normalize(obj); openSubject = null; commit();
+    } catch(err) { alert('Не получилось прочитать файл. Это точно копия из этого приложения?'); }
+  };
+  reader.readAsText(e.target.files[0]);
+});
+
+// Поиск: ввод текста, горячие клавиши, стрелки, закрытие по клику на фон
+document.addEventListener('input', e => { if (e.target.id === 'searchInput') renderSearch(); });
+document.addEventListener('keydown', e => {
+  const dlg = $('#searchDlg');
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK'){ e.preventDefault(); openSearch(); return; }     // Ctrl+K
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (e.key === '/' && !dlg.open && !document.querySelector('dialog[open]') && !['input', 'textarea', 'select'].includes(tag)){
+    e.preventDefault(); openSearch(); return;                                                           // «/»
+  }
+  if (!dlg.open) return;
+  const items = [...dlg.querySelectorAll('.sitem')];
+  if (e.target.id === 'searchInput' && e.key === 'Enter' && items[0]){ e.preventDefault(); items[0].click(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    e.preventDefault();
+    const next = items.indexOf(document.activeElement) + (e.key === 'ArrowDown' ? 1 : -1);
+    if (next < 0) $('#searchInput').focus(); else if (items[next]) items[next].focus();
+  }
+});
+document.addEventListener('click', e => { if (e.target.id === 'searchDlg') e.target.close(); });
+document.addEventListener('close', e => { if (e.target.id === 'searchDlg') $('#searchInput').value = ''; }, true);
+
+// Google Диск: Client ID, почта и возвращение на вкладку
+document.addEventListener('input', e => { if (e.target.id === 'driveEmail') driveUi.email = e.target.value; });
+document.addEventListener('change', e => {
+  if (e.target.id === 'driveClientId'){ driveCfg().clientId = e.target.value.trim(); saveQuiet(); }
+  if (e.target.id === 'driveEmail'){ driveUi.email = e.target.value.trim(); }
+  if (e.target.id === 'fileInput'){ const fl = [...e.target.files]; uploadFiles(e.target.dataset.subj, fl); e.target.value = ''; }
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && driveCfg().connected && Date.now() - driveLast > 60000) driveRun('auto', true);
+});
+
+// Время напоминания
+document.addEventListener('change', e => {
+  if (e.target.id !== 'notifyTime') return;
+  state.settings.notify.time = e.target.value || '09:00';
+  commit(); checkReminders();
+});
+
+renderAll();
+checkReminders();
+if (driveCfg().connected) driveRun('auto', true);       // при открытии сверяемся с Диском
+setInterval(checkReminders, 60000);                                   // проверяем каждую минуту
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
+</script>
+</body>
+</html>
