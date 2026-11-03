@@ -577,6 +577,10 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g,
 const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 const todayIdx = () => (new Date().getDay() + 6) % 7;   // Пн = 0 ... Вс = 6
 
+// Отпечатки текстов-примеров из прошлых версий: по ним один раз вычищаем эти тексты из уже сохранённых данных
+const LEGACY_NOTE_HASHES = [544718499, 201857429, 1130997903, 471385851];
+const textHash = t => { let x = 5381; for (const c of String(t)) x = ((x << 5) + x + c.charCodeAt(0)) | 0; return x; };
+
 function load(){
   try {
     const raw = localStorage.getItem(KEY);
@@ -586,51 +590,13 @@ function load(){
       const old = localStorage.getItem(k);
       if (!old) continue;
       const o = JSON.parse(old);
-      const mine = [...(o.subjects || []), ...(o.lessons || []), ...(o.tasks || [])].some(x => !x.ex);
-      if (mine){
-        // примеры других групп убираем
-        o.lessons = (o.lessons || []).filter(x => !(x.ex && x.groups && x.groups.length && !x.groups.includes('320126')));
-        return normalize(o);
-      }
+      if ([...(o.subjects || []), ...(o.lessons || []), ...(o.tasks || [])].some(x => !x.ex)) return normalize(o);
     }
   } catch(e) {}
-  return normalize({ subjects: [], lessons: [], tasks: [] });
+  return normalize({});          // чистое приложение: ничего заранее не заполнено
 }
 // Подстраховка: если чего-то не хватает в данных, добавляем пустое
-// Экзамены и зачёты из учебного плана 1 курса психологии (2026/27). Даты проведения пока не назначены.
-function seedExams(){
-  const rows = [
-    [1,'exam','phil'],[1,'exam','econ'],[1,'exam','psy'],
-    [1,'credit','prakt'],[1,'credit','it'],[1,'credit','anat'],[1,'credit','hist'],[1,'credit','lang'],[1,'credit','fiz'],[1,'credit','bzh'],
-    [2,'exam','psy'],[2,'exam','hist'],[2,'exam','lang'],
-    [2,'exam','','История белорусской государственности'],[2,'exam','','Психофизиология'],
-    [2,'credit','','Методы прикладной статистики'],[2,'credit','','Психология юзабилити'],
-    [2,'credit','','Нейропсихология'],[2,'credit','','Педагогика'],[2,'credit','fiz'],
-    [2,'credit','','Белорусский язык (профессиональная лексика)']
-  ];
-  return rows.map(([sem, kind, sid, title]) => ({ id:uid(), title: title || SUBJ[sid][0], subjectId:sid, kind, sem,
-    date:'', time:'', room:'', note:'', topics:[], passed:false, result:'' }));
-}
-// Замены аудиторий, вписанные от руки в бумажное расписание: [предмет, тип, первая дата, было, стало]
-const ROOM_FIXES = [
-  ['anat','ЛК','2026-11-02','ауд. 471 к.1','ауд. 102 к.3'],
-  ['econ','ЛК','2026-11-03','ауд. 471 к.1','ауд. 102 к.3'],
-  ['phil','ЛК','2026-11-05','ауд. 471 к.1','ауд. 404 к.3'],
-  ['hist','ЛК','2026-11-05','ауд. 471 к.1','ауд. 404 к.3'],
-  ['econ','СЕМ','2026-11-05','ауд. 302 к.2','ауд. 501 к.3'],
-  ['tren','ПЗ','2026-11-06','ауд. 406 к.2','ауд. 93 к.1'],
-  ['hist','СЕМ','2026-11-06','ауд. 501 к.3','ауд. 406 к.3'],
-  ['bzh','ПЗ','2026-11-06','ауд. 406 к.2','ауд. 93 к.1']
-];
-function applyRoomFixes(s){
-  if (s.roomFix === 1) return;
-  (s.lessons || []).forEach(l => ROOM_FIXES.forEach(([sid, kind, d0, was, now]) => {
-    if (l.subjectId === sid && l.kind === kind && l.dates && l.dates[0] === d0 && l.room === was) l.room = now;
-  }));
-  s.roomFix = 1;
-}
 function normalize(s){
-  applyRoomFixes(s);
   s.settings = Object.assign({ theme:'light', week:'all', showDone:false, group:'all' }, s.settings);
   // старые названия тем переносим на новые (светлая / тёмная)
   s.settings.theme = ({ paper:'light', pastel:'light', night:'dark' })[s.settings.theme] || s.settings.theme;
@@ -638,22 +604,32 @@ function normalize(s){
   // уведомления: on — включены, days — за сколько дней напоминать (0 = в день срока),
   // time — во сколько, scope — о чём: 'all' (все задания со сроком) или 'deadline' (только дедлайны)
   s.settings.notify = Object.assign({ on:false, days:[0,1], time:'09:00', scope:'all' }, s.settings.notify);
-  // Google Диск: clientId — ключ приложения из Google Cloud, connected — аккаунт привязан,
+  // Google Диск: connected — аккаунт привязан,
   // auto — сохранять на Диск само, lastRemote — версия файла на Диске при последней синхронизации,
   // dirty — есть изменения, ещё не отправленные на Диск, conflict — версии на Диске и здесь разошлись
-  s.settings.drive = Object.assign({ clientId:'', connected:false, email:'', name:'', auto:true,
+  s.settings.drive = Object.assign({ connected:false, email:'', name:'', auto:true,
     lastSync:'', lastRemote:'', dirty:false, conflict:false }, s.settings.drive);
   s.reminded = s.reminded || {};   // о чём уже напомнили, чтобы не повторять
   s.alerts   = s.alerts   || [];   // напоминания, которые показаны в приложении
   s.subjects = (s.subjects || []).map(x => Object.assign({ notes:'', links:[], files:[], grades:[] }, x));
   s.subjects.forEach(x => { if (!Array.isArray(x.files)) x.files = []; if (!Array.isArray(x.grades)) x.grades = []; });   // файлы, прикреплённые на Google Диск
-  // экзамены и зачёты: в первый раз заполняем из учебного плана (но не после «Стереть всё»)
-  if (!Array.isArray(s.exams)) s.exams = s.subjects.length ? seedExams() : [];
+  if (!Array.isArray(s.exams)) s.exams = [];
   s.exams = s.exams.map(e => Object.assign({ title:'', subjectId:'', kind:'exam', sem:1, date:'', time:'', room:'', note:'', topics:[], passed:false, result:'' }, e));
   s.exams.forEach(e => { if (!Array.isArray(e.topics)) e.topics = []; });
   s.lessons  = s.lessons || [];
   s.dayoffs  = s.dayoffs || [];
   s.tasks    = s.tasks   || [];
+  s.grades   = undefined; delete s.grades;
+  // Одноразовая чистка (раз в жизни данных): убираем подготовленные примеры из прошлых версий
+  if (s.cleanV !== 1){
+    s.tasks = s.tasks.filter(t => !t.ex);                                     // примеры заданий
+    s.subjects.forEach(x => { if (x.notes && LEGACY_NOTE_HASHES.includes(textHash(x.notes))) x.notes = ''; });   // примеры конспектов
+    // нетронутые заготовки экзаменов и зачётов: без даты, вопросов, заметок и результата
+    s.exams = s.exams.filter(e => e.date || e.passed || e.result || e.note || e.topics.length);
+    s.cleanV = 1;
+  }
+  // метки «пример» больше не нужны: всё, что есть в данных, это твои записи
+  [s.subjects, s.lessons, s.tasks, s.dayoffs].forEach(list => list.forEach(x => { delete x.ex; }));
   return s;
 }
 let quietSave = false;   // true — сохраняем, не считая это изменением данных (для служебных записей)
@@ -687,7 +663,6 @@ let calSel   = iso(new Date());          // какой день выбран в 
 function monthStart(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
 
 const subj = id => state.subjects.find(s => s.id === id) || { name:'Без предмета', color:'#999999' };
-const hasExamples = () => [...state.subjects, ...state.lessons, ...state.tasks].some(x => x.ex);
 
 // Сохранить и перерисовать всё
 function commit(){ save(); renderAll(); }
@@ -792,7 +767,6 @@ function renderWeek(){
   const last = new Date(weekStart); last.setDate(last.getDate() + 5);
 
   let html = '';
-  if (hasExamples()) html += `<div class="note"><span>Сейчас тут примеры. Нажми на любую пару или задание, чтобы изменить.</span><button class="mini" data-act="clearex">Стереть примеры</button></div>`;
   if (groups.length > 1) html += `<div class="seg">` + [['all','Все группы'], ...groups.map(g => [g, g])]
     .map(([k, t]) => `<button data-act="group" data-id="${esc(k)}" class="${grp===k?'on':''}">${esc(t)}</button>`).join('') + `</div>`;
   if (state.lessons.some(l => l.week && l.week !== 'all')) html += `<div class="seg">` + [['all','Все недели'],['even','Чётная'],['odd','Нечётная']]
@@ -958,7 +932,7 @@ function renderSubjects(){
 /* ---------- Глобальный поиск ---------- */
 // Приводим текст к удобному для сравнения виду: маленькие буквы, «ё» = «е»
 const norm = s => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
-// Отрезаем окончание, чтобы «психология» находила «психологии», а «хруцкая» — «Хруцкой»
+// Отрезаем окончание, чтобы «психология» находила «психологии», а «иванова» — «Ивановой»
 const stem = t => t.length <= 4 ? t : t.length === 5 ? t.slice(0, -1) : t.slice(0, -2);
 const tokenize = q => [...new Set(norm(q).split(/\s+/).filter(Boolean).map(stem))].slice(0, 6);
 // Где заканчивается слово, начавшееся до позиции i (чтобы подсвечивать и выделять слово целиком)
@@ -990,7 +964,7 @@ function snippet(text, tokens){
   return (a > 0 ? '…' : '') + flat.slice(a, b) + (b < flat.length ? '…' : '');
 }
 
-// Преподаватели собираются из пар расписания: «ст. преп. Ярец Г.Г.» → «Ярец Г.Г.»
+// Преподаватели собираются из пар расписания: из «ст. преп. Иванова А.А.» получается фамилия «Иванова»
 function teacherIndex(){
   const map = new Map();
   state.lessons.forEach(l => {
@@ -1132,9 +1106,9 @@ const DRIVE_FOLDER = 'Мой универ', DRIVE_FILE = 'moy-universitet-data.j
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 const DRIVE_DELAY = 8000;        // через сколько мс после последнего изменения отправлять на Диск
 const driveCfg = () => state.settings.drive;
-// Ключ приложения (Client ID) создаётся в Google Cloud один раз. Вставь его сюда между кавычками, и вводить его в настройках больше не придётся.
+// Ключ приложения (Client ID) создаётся в Google Cloud один раз и вставляется сюда между кавычками. Пользователь его не вводит: в приложении только адрес почты.
 const DRIVE_CLIENT_ID = '';
-const driveClientId = () => DRIVE_CLIENT_ID || driveCfg().clientId;
+const driveClientId = () => DRIVE_CLIENT_ID;
 const driveUi = { busy:false, msg:'', kind:'', quota:null, warned:false, email:'' };
 let driveToken = null, driveTokenExp = 0, driveTimer = null, driveLast = 0;
 
@@ -1290,7 +1264,7 @@ async function driveRun(mode, quiet){
 async function driveConnect(){
   const d = driveCfg(), mail = (driveUi.email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return driveSay('Введи адрес своей почты Google, например name@gmail.com.', 'err'), renderSettings();
-  if (!driveClientId()) return driveSay('Сначала нужна первая настройка (один раз): открой «Первая настройка» ниже.', 'err'), renderSettings();
+  if (!driveClientId()) return driveSay('Вход через Google ещё не настроен: в код приложения нужно один раз вставить ключ (Client ID). Как его получить, написано ниже.', 'err'), renderSettings();
   if (location.protocol === 'file:') return driveSay('Google не пускает вход со страницы, открытой как файл. Открой приложение по ссылке https://… или через http://localhost.', 'err'), renderSettings();
   driveUi.busy = true; driveSay('Открываю вход Google…'); renderSettings();
   try {
@@ -1332,17 +1306,15 @@ function driveBlock(){
   const dis = ui.busy ? 'disabled' : '';
   const origin = isFile ? 'адрес сайта после выкладки (или http://localhost:8000 при локальном запуске)' : location.origin;
   const msg = ui.msg ? `<p class="status ${ui.kind}">${esc(ui.msg)}</p>` : '';
-  const howto = `<details class="howto" ${d.clientId ? '' : 'open'}><summary>Первая настройка (один раз)</summary>
-      <p class="status">Google должен знать, какому приложению разрешать вход. Для этого один раз создаётся ключ приложения (Client ID). Дальше вход идёт только по твоей почте.</p>
-      <div class="optlabel">Client ID</div>
-      <input class="mono" id="driveClientId" placeholder="1234567890-abc.apps.googleusercontent.com" value="${esc(d.clientId)}" autocomplete="off" spellcheck="false">
+  const howto = `<details class="howto"><summary>Как включить вход через Google (один раз)</summary>
+      <p class="status">Google должен знать, какому приложению разрешать вход. Для этого один раз создаётся ключ приложения (Client ID). Он не секретный. Его вставляют в код, и после этого в приложении остаётся только адрес почты.</p>
       <ol>
       <li>Открой <b>console.cloud.google.com</b>, войди в свой Google-аккаунт и создай проект (название любое).</li>
       <li>В меню «API и сервисы» → «Библиотека» найди <b>Google Drive API</b> и нажми «Включить».</li>
       <li>«API и сервисы» → «Экран согласия OAuth» (в новом интерфейсе «Google Auth Platform»): тип <b>Внешний</b>, название приложения и твоя почта. В «Тестовых пользователях» добавь тот Google-аккаунт, который будешь привязывать.</li>
       <li>«Учётные данные» → «Создать учётные данные» → <b>Идентификатор клиента OAuth</b> → тип «Веб-приложение». В «Разрешённых источниках JavaScript» добавь: <code>${esc(origin)}</code></li>
-      <li>Скопируй Client ID (он заканчивается на <code>.apps.googleusercontent.com</code>) и вставь в поле выше.</li></ol>
-      <p class="status">Названия кнопок в Google иногда меняются, но смысл тот же. При первом входе Google может написать «приложение не проверено»: это твоё собственное приложение, нажми «Дополнительно» → «Перейти».</p></details>`;
+      <li>Скопируй Client ID (он заканчивается на <code>.apps.googleusercontent.com</code>) и отправь его Claude, он вставит его в код. Или вставь сам в строку <code>DRIVE_CLIENT_ID</code> в начале скрипта.</li></ol>
+      <p class="status">При первом входе Google может написать «приложение не проверено»: это твоё собственное приложение, нажми «Дополнительно» → «Перейти».</p></details>`;
 
   let body;
   if (!d.connected){
@@ -1825,7 +1797,6 @@ function renderSettings(){
 
      <h3>Опасная зона</h3>
      <div class="seg">
-       ${hasExamples() ? '<button data-act="clearex">Стереть примеры</button>' : ''}
        <button data-act="reset">Стереть всё</button>
      </div>`;
 }
@@ -2084,14 +2055,6 @@ document.addEventListener('click', e => {
       s ? linkForm(s) : subjView === 'grades' ? gradeForm('') : subjectForm(null);
     }
   }
-  else if (act === 'clearex'){
-    if (!confirm('Стереть все примеры? Твои собственные записи останутся.')) return;
-    state.subjects = state.subjects.filter(x => !x.ex);
-    state.lessons  = state.lessons.filter(x => !x.ex);
-    state.tasks    = state.tasks.filter(x => !x.ex);
-    state.dayoffs  = state.dayoffs.filter(x => !x.ex);
-    openSubject = null; commit();
-  }
   else if (act === 'reset'){
     if (!confirm('Стереть ВСЁ без возможности вернуть? Лучше сначала скачай копию.')) return;
     state = normalize({}); openSubject = null; commit();
@@ -2160,7 +2123,6 @@ document.addEventListener('close', e => { if (e.target.id === 'searchDlg') $('#s
 // Google Диск: Client ID, почта и возвращение на вкладку
 document.addEventListener('input', e => { if (e.target.id === 'driveEmail') driveUi.email = e.target.value; });
 document.addEventListener('change', e => {
-  if (e.target.id === 'driveClientId'){ driveCfg().clientId = e.target.value.trim(); saveQuiet(); }
   if (e.target.id === 'driveEmail'){ driveUi.email = e.target.value.trim(); }
   if (e.target.id === 'fileInput'){ const fl = [...e.target.files]; uploadFiles(e.target.dataset.subj, fl); e.target.value = ''; }
 });
