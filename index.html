@@ -1107,7 +1107,7 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.goog
 const DRIVE_DELAY = 8000;        // через сколько мс после последнего изменения отправлять на Диск
 const driveCfg = () => state.settings.drive;
 // Ключ приложения (Client ID) создаётся в Google Cloud один раз и вставляется сюда между кавычками. Пользователь его не вводит: в приложении только адрес почты.
-const DRIVE_CLIENT_ID = '';
+const DRIVE_CLIENT_ID = '435927535973-8ghkn3pmrpc6ve1s932jhk5b6ujcvgkp.apps.googleusercontent.com';
 const driveClientId = () => DRIVE_CLIENT_ID;
 const driveUi = { busy:false, msg:'', kind:'', quota:null, warned:false, email:'' };
 let driveToken = null, driveTokenExp = 0, driveTimer = null, driveLast = 0;
@@ -1264,7 +1264,7 @@ async function driveRun(mode, quiet){
 async function driveConnect(){
   const d = driveCfg(), mail = (driveUi.email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return driveSay('Введи адрес своей почты Google, например name@gmail.com.', 'err'), renderSettings();
-  if (!driveClientId()) return driveSay('Вход через Google ещё не настроен: в код приложения нужно один раз вставить ключ (Client ID). Как его получить, написано ниже.', 'err'), renderSettings();
+  if (!driveClientId()) return driveSay('Вход через Google сейчас недоступен.', 'err'), renderSettings();
   if (location.protocol === 'file:') return driveSay('Google не пускает вход со страницы, открытой как файл. Открой приложение по ссылке https://… или через http://localhost.', 'err'), renderSettings();
   driveUi.busy = true; driveSay('Открываю вход Google…'); renderSettings();
   try {
@@ -1304,17 +1304,7 @@ function driveDisconnect(){
 function driveBlock(){
   const d = driveCfg(), ui = driveUi, isFile = location.protocol === 'file:';
   const dis = ui.busy ? 'disabled' : '';
-  const origin = isFile ? 'адрес сайта после выкладки (или http://localhost:8000 при локальном запуске)' : location.origin;
   const msg = ui.msg ? `<p class="status ${ui.kind}">${esc(ui.msg)}</p>` : '';
-  const howto = `<details class="howto"><summary>Как включить вход через Google (один раз)</summary>
-      <p class="status">Google должен знать, какому приложению разрешать вход. Для этого один раз создаётся ключ приложения (Client ID). Он не секретный. Его вставляют в код, и после этого в приложении остаётся только адрес почты.</p>
-      <ol>
-      <li>Открой <b>console.cloud.google.com</b>, войди в свой Google-аккаунт и создай проект (название любое).</li>
-      <li>В меню «API и сервисы» → «Библиотека» найди <b>Google Drive API</b> и нажми «Включить».</li>
-      <li>«API и сервисы» → «Экран согласия OAuth» (в новом интерфейсе «Google Auth Platform»): тип <b>Внешний</b>, название приложения и твоя почта. В «Тестовых пользователях» добавь тот Google-аккаунт, который будешь привязывать.</li>
-      <li>«Учётные данные» → «Создать учётные данные» → <b>Идентификатор клиента OAuth</b> → тип «Веб-приложение». В «Разрешённых источниках JavaScript» добавь: <code>${esc(origin)}</code></li>
-      <li>Скопируй Client ID (он заканчивается на <code>.apps.googleusercontent.com</code>) и отправь его Claude, он вставит его в код. Или вставь сам в строку <code>DRIVE_CLIENT_ID</code> в начале скрипта.</li></ol>
-      <p class="status">При первом входе Google может написать «приложение не проверено»: это твоё собственное приложение, нажми «Дополнительно» → «Перейти».</p></details>`;
 
   let body;
   if (!d.connected){
@@ -1323,8 +1313,7 @@ function driveBlock(){
       <div class="optlabel">Адрес почты Google</div>
       <input type="email" id="driveEmail" placeholder="name@gmail.com" value="${esc(ui.email)}" autocomplete="email" autocapitalize="off" spellcheck="false">
       ${msg}
-      <button class="btn" data-act="driveconnect" ${dis}>Войти через Google</button>
-      ${DRIVE_CLIENT_ID ? '' : howto}`;
+      <button class="btn" data-act="driveconnect" ${dis}>Войти через Google</button>`;
   } else {
     const q = ui.quota ? `Занято на Диске: ${fmtBytes(ui.quota.usage)} из ${ui.quota.limit ? fmtBytes(ui.quota.limit) : 'без ограничений'}` : '';
     const last = d.lastSync ? 'Последняя синхронизация: ' + new Date(d.lastSync).toLocaleString('ru-RU', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }) : 'Ещё не синхронизировалось';
