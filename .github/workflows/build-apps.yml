@@ -24,6 +24,13 @@ jobs:
           cp index.html manifest.webmanifest native/desktop/www/
           cp -r icons native/desktop/www/icons
           cp icons/icon-512.png native/desktop/build/icon.png
+      - name: Вставить ключ Google для компьютера (из секретов репозитория)
+        shell: bash
+        env:
+          GOOGLE_DESKTOP_SECRET: ${{ secrets.GOOGLE_DESKTOP_SECRET }}
+        run: |
+          if [ -z "$GOOGLE_DESKTOP_SECRET" ]; then echo "::warning::Секрет GOOGLE_DESKTOP_SECRET не задан: вход Google в Windows-версии работать не будет"; fi
+          node -e "const fs=require('fs');const f='native/desktop/google-desktop.json';const j=JSON.parse(fs.readFileSync(f,'utf8'));j.client_secret=process.env.GOOGLE_DESKTOP_SECRET||'';fs.writeFileSync(f,JSON.stringify(j,null,2))"
       - name: Собрать установщик
         working-directory: native/desktop
         shell: bash
