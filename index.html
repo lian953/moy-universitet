@@ -1146,7 +1146,7 @@ function loadGis(){
 // В приложении для компьютера вход идёт через обычный браузер (его даёт оболочка Electron, window.desktopAuth),
 // а продление — тихо, по долгоживущему ключу, который хранится зашифрованным на устройстве.
 // Android (оболочка Capacitor): вход в системном браузере (Chrome Custom Tab), возврат через ссылку com.moyuniver.app:/oauth2redirect
-const ANDROID_CLIENT_ID = '';
+const ANDROID_CLIENT_ID = '650324728890-9ouhki6h12og49s7srn4mc0h214o4gkc.apps.googleusercontent.com';
 const ANDROID_REDIRECT = 'com.moyuniver.app:/oauth2redirect';
 const REFRESH_KEY = 'moyUniversitet.driveRefresh';
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
