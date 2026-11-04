@@ -1,0 +1,89 @@
+name: Собрать приложения (Windows и Android)
+
+# Запускается вручную: вкладка Actions → «Собрать приложения» → Run workflow.
+# Готовые файлы появятся внизу страницы запуска (Artifacts) и в разделе Releases.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Подготовить сайт и значок
+        shell: bash
+        run: |
+          mkdir -p native/desktop/www native/desktop/build
+          cp index.html manifest.webmanifest native/desktop/www/
+          cp -r icons native/desktop/www/icons
+          cp icons/icon-512.png native/desktop/build/icon.png
+      - name: Собрать установщик
+        working-directory: native/desktop
+        shell: bash
+        run: |
+          npm install
+          npx electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows
+          path: |
+            native/desktop/dist/*.exe
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Подготовить сайт
+        run: |
+          mkdir -p native/mobile/www native/mobile/assets
+          cp index.html manifest.webmanifest native/mobile/www/
+          cp -r icons native/mobile/www/icons
+          python3 -c "
+          from PIL import Image
+          im = Image.open('icons/icon-512.png').convert('RGBA').resize((1024, 1024), Image.LANCZOS)
+          im.save('native/mobile/assets/icon-only.png')
+          im.save('native/mobile/assets/icon-foreground.png')
+          Image.new('RGBA', (1024, 1024), (240, 240, 246, 255)).save('native/mobile/assets/icon-background.png')
+          "
+      - name: Собрать Android-проект
+        working-directory: native/mobile
+        run: |
+          npm install
+          npx cap add android
+          npx capacitor-assets generate --android || true
+          npx cap sync android
+      - name: Собрать APK
+        working-directory: native/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Переименовать
+        run: cp native/mobile/android/app/build/outputs/apk/debug/app-debug.apk Moy-universitet.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Android
+          path: Moy-universitet.apk
+
+  release:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out }
+      - name: Опубликовать в Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apps-latest
+          name: Приложения «Мой универ»
+          body: "Windows: установщик (Setup) или портативная версия (без установки). Android: файл .apk."
+          files: out/**/*
+          make_latest: true

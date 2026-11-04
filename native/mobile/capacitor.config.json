@@ -1,0 +1,7 @@
+{
+  "appId": "com.moyuniver.app",
+  "appName": "Мой универ",
+  "webDir": "www",
+  "backgroundColor": "#f0f0f6",
+  "server": { "androidScheme": "https" }
+}
