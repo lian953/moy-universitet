@@ -75,7 +75,7 @@ async function login(hint){
   });
   const tok = await post({ code, code_verifier: verifier, grant_type: 'authorization_code', redirect_uri: login.redirect });
   if (tok.refresh_token) saveRefresh(tok.refresh_token);
-  return { access_token: tok.access_token, expires_in: tok.expires_in };
+  return { access_token: tok.access_token, expires_in: tok.expires_in, scope: tok.scope };
 }
 
 async function refresh(){
@@ -83,7 +83,7 @@ async function refresh(){
   if (!rt || !CFG.client_secret) return null;
   try {
     const tok = await post({ refresh_token: rt, grant_type: 'refresh_token' });
-    return { access_token: tok.access_token, expires_in: tok.expires_in };
+    return { access_token: tok.access_token, expires_in: tok.expires_in, scope: tok.scope };
   } catch(e){
     if (e.message === 'invalid_grant') clearRefresh();      // доступ отозван или истёк: нужен новый вход
     return null;

@@ -1166,7 +1166,7 @@ function androidAuth(){
     async refresh(){
       let rt = ''; try { rt = localStorage.getItem(REFRESH_KEY) || ''; } catch(_) {}
       if (!rt || !ANDROID_CLIENT_ID) return null;
-      try { const t = await googleTokenCall({ refresh_token:rt, grant_type:'refresh_token' }); return { access_token:t.access_token, expires_in:t.expires_in }; }
+      try { const t = await googleTokenCall({ refresh_token:rt, grant_type:'refresh_token' }); return { access_token:t.access_token, expires_in:t.expires_in, scope:t.scope }; }
       catch(e){ if (e.message === 'invalid_grant') try { localStorage.removeItem(REFRESH_KEY); } catch(_) {} return null; }
     },
     async login(hint){
@@ -1191,7 +1191,7 @@ function androidAuth(){
       });
       const t = await googleTokenCall({ code, code_verifier:verifier, grant_type:'authorization_code', redirect_uri:ANDROID_REDIRECT });
       if (t.refresh_token) try { localStorage.setItem(REFRESH_KEY, t.refresh_token); } catch(_) {}
-      return { access_token:t.access_token, expires_in:t.expires_in };
+      return { access_token:t.access_token, expires_in:t.expires_in, scope:t.scope };
     },
     async logout(){ let rt = ''; try { rt = localStorage.getItem(REFRESH_KEY) || ''; localStorage.removeItem(REFRESH_KEY); } catch(_) {} if (rt) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(rt), { method:'POST' }).catch(() => {}); return true; }
   };
@@ -1204,6 +1204,7 @@ async function nativeToken(prompt, hint, force){
   if (!force){ try { r = await na.refresh(); } catch(_) { r = null; } }
   if (!r && (force || prompt !== 'none')) r = await na.login(hint || driveCfg().email || '');
   if (!r || !r.access_token) throw new Error('auth');
+  if (r.scope && !/auth\/drive\.file/.test(r.scope)) throw new Error('scope');
   driveToken = r.access_token; driveTokenExp = Date.now() + (Number(r.expires_in || 3600) - 60) * 1000; driveNeedAuth = false; rememberToken();
   return driveToken;
 }
@@ -1241,6 +1242,7 @@ function driveExplain(e){
   if (m === 'auth' || /popup|interaction|login_required|consent|immediate|access_denied/i.test(m)) return 'Нужно подтвердить вход в Google. Нажми «Войти снова».';
   if (m === 'gis') return 'Не удалось загрузить вход Google. Проверь интернет.';
   if (e && e.status === 403 && /accessNotConfigured|has not been used|disabled/i.test(body)) return 'В проекте Google Cloud не включён Google Drive API. Включи его (шаг 2 инструкции).';
+  if (e && e.status === 403 && /insufficient|scope|permission/i.test(body)) return 'Google не выдал доступ к Диску. Отвяжи аккаунт и войди снова, на экране Google отметь галочку доступа к Диску.';
   if (e && e.status === 403) return 'Google отказал в доступе (403). Проверь, что твой аккаунт добавлен в тестовые пользователи.';
   if (e && e.status === 404) return 'Файл на Диске не найден. Нажми «Отправить на Диск».';
   if (e && e.status === 429) return 'Google просит подождать: слишком много запросов. Попробуй чуть позже.';
