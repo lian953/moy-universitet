@@ -3,5 +3,6 @@
   "appName": "Мой универ",
   "webDir": "www",
   "backgroundColor": "#f0f0f6",
-  "server": { "androidScheme": "https" }
+  "server": { "androidScheme": "https" },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
 }

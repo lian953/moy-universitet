@@ -1151,15 +1151,17 @@ const ANDROID_REDIRECT = 'com.moyuniver.app:/oauth2redirect';
 const REFRESH_KEY = 'moyUniversitet.driveRefresh';
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 async function googleTokenCall(params){
-  const r = await fetch('https://oauth2.googleapis.com/token', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:new URLSearchParams(Object.assign({ client_id:ANDROID_CLIENT_ID }, params)) });
+  const r = await fetch('https://oauth2.googleapis.com/token', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:new URLSearchParams(Object.assign({ client_id:ANDROID_CLIENT_ID }, params)).toString() });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'http' + r.status);
   return j;
 }
 function androidAuth(){
   const C = window.Capacitor;
-  if (!(C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.Browser && C.Plugins.App)) return null;
-  const { Browser, App } = C.Plugins;
+  if (!(C && C.isNativePlatform && C.isNativePlatform())) return null;
+  const plug = n => (C.Plugins && C.Plugins[n]) || (C.registerPlugin && C.registerPlugin(n));
+  const Browser = plug('Browser'), App = plug('App');
+  if (!Browser || !App) return null;
   return {
     async refresh(){
       let rt = ''; try { rt = localStorage.getItem(REFRESH_KEY) || ''; } catch(_) {}
@@ -1242,7 +1244,7 @@ function driveExplain(e){
   if (e && e.status === 403) return 'Google отказал в доступе (403). Проверь, что твой аккаунт добавлен в тестовые пользователи.';
   if (e && e.status === 404) return 'Файл на Диске не найден. Нажми «Отправить на Диск».';
   if (e && e.status === 429) return 'Google просит подождать: слишком много запросов. Попробуй чуть позже.';
-  if (e instanceof TypeError) return 'Нет связи с Google. Проверь интернет.';
+  if (e instanceof TypeError) return 'Нет связи с Google (' + m + '). Проверь интернет.';
   return 'Ошибка Google Диска: ' + m;
 }
 
