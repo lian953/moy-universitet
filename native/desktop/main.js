@@ -1,6 +1,7 @@
 // Оболочка «Мой универ» для компьютера: окно + встроенный мини-сервер, который отдаёт сайт из папки www.
 // Страница открывается по адресу http://localhost:47821 (так, как её ждёт вход Google), а не как файл.
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
+const gauth = require('./gauth');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -31,6 +32,10 @@ function startServer(){
   });
 }
 
+ipcMain.handle('gauth:login', (_e, hint) => gauth.login(String(hint || '')).catch(e => { throw new Error(e.message); }));
+ipcMain.handle('gauth:refresh', () => gauth.refresh());
+ipcMain.handle('gauth:logout', () => gauth.logout());
+
 let win;
 async function createWindow(){
   const served = await startServer();
@@ -38,7 +43,7 @@ async function createWindow(){
     width: 1100, height: 820, minWidth: 360, minHeight: 560,
     title: 'Мой универ', backgroundColor: '#f0f0f6', autoHideMenuBar: true,
     icon: path.join(__dirname, 'build', 'icon.png'),
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, 'preload.js') }
   });
   Menu.setApplicationMenu(null);
   // Внешние ссылки (и окно входа Google) — не наши: ссылки открываем в обычном браузере, окно Google разрешаем

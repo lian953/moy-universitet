@@ -14,7 +14,7 @@
     "appId": "com.moyuniver.app",
     "productName": "Мой универ",
     "artifactName": "Moy-universitet-${arch}.${ext}",
-    "files": ["main.js", "www/**/*", "build/icon.png"],
+    "files": ["main.js", "preload.js", "gauth.js", "google-desktop.json", "www/**/*", "build/icon.png"],
     "win": { "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "portable", "arch": ["x64"] }], "icon": "build/icon.png" },
     "portable": { "artifactName": "Moy-universitet-portable.exe" },
     "nsis": { "artifactName": "Moy-universitet-Setup.exe", "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false },

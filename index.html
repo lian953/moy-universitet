@@ -1143,7 +1143,20 @@ function loadGis(){
   });
 }
 // Получить ключ доступа. prompt: 'select_account' — выбрать аккаунт, '' — обычный вход, 'none' — тихо, без окон
-function requestToken(prompt, hint){
+// В приложении для компьютера вход идёт через обычный браузер (его даёт оболочка Electron, window.desktopAuth),
+// а продление — тихо, по долгоживущему ключу, который хранится зашифрованным на устройстве.
+const nativeAuth = () => (typeof window !== 'undefined' && window.desktopAuth) || null;
+async function nativeToken(prompt, hint, force){
+  const na = nativeAuth();
+  let r = null;
+  if (!force){ try { r = await na.refresh(); } catch(_) { r = null; } }
+  if (!r && (force || prompt !== 'none')) r = await na.login(hint || driveCfg().email || '');
+  if (!r || !r.access_token) throw new Error('auth');
+  driveToken = r.access_token; driveTokenExp = Date.now() + (Number(r.expires_in || 3600) - 60) * 1000; driveNeedAuth = false; rememberToken();
+  return driveToken;
+}
+function requestToken(prompt, hint, force){
+  if (nativeAuth()) return nativeToken(prompt, hint, force);
   const d = driveCfg();
   return loadGis().then(() => new Promise((resolve, reject) => {
     const client = google.accounts.oauth2.initTokenClient({
@@ -1273,10 +1286,10 @@ async function driveConnect(){
   if (location.protocol === 'file:') return driveSay('Google не пускает вход со страницы, открытой как файл. Открой приложение по ссылке https://… или через http://localhost.', 'err'), renderSettings();
   driveUi.busy = true; driveSay('Открываю вход Google…'); renderSettings();
   try {
-    await requestToken('', mail);
+    await requestToken('', mail, true);
     const info = await (await driveFetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();
     if ((info.email || '').toLowerCase() !== mail.toLowerCase()){
-      try { google.accounts.oauth2.revoke(driveToken, () => {}); } catch(_) {}
+      try { if (nativeAuth()) nativeAuth().logout(); else google.accounts.oauth2.revoke(driveToken, () => {}); } catch(_) {}
       driveToken = null; driveTokenExp = 0; rememberToken();
       throw new Error('mismatch:' + (info.email || ''));
     }
@@ -1286,6 +1299,7 @@ async function driveConnect(){
   } catch(e){
     const m = String(e.message);
     driveSay(m.startsWith('mismatch:') ? 'В окне Google выбрана другая почта (' + m.slice(9) + '). Войди с адресом ' + mail + '.'
+      : m === 'config' ? 'В этой версии приложения вход через Google ещё не настроен.'
       : /popup|access_denied/i.test(m) ? 'Вход отменён: окно Google закрыто или доступ не выдан. Попробуй ещё раз.' : driveExplain(e), 'err');
   }
   finally { driveUi.busy = false; saveQuiet(); renderSettings(); }
@@ -1299,7 +1313,7 @@ async function driveReauth(){
 }
 function driveDisconnect(){
   if (!confirm('Отвязать аккаунт Google? Файл с данными на Диске останется на месте.')) return;
-  try { if (driveToken && typeof google !== 'undefined') google.accounts.oauth2.revoke(driveToken, () => {}); } catch(e) {}
+  try { if (nativeAuth()) nativeAuth().logout(); else if (driveToken && typeof google !== 'undefined') google.accounts.oauth2.revoke(driveToken, () => {}); } catch(e) {}
   driveToken = null; driveTokenExp = 0; rememberToken(); clearTimeout(driveTimer);
   Object.assign(driveCfg(), { connected:false, email:'', name:'', lastSync:'', lastRemote:'', dirty:false, conflict:false });
   driveUi.msg = ''; driveUi.quota = null; saveQuiet(); renderSettings();
