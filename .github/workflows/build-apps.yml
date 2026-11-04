@@ -64,7 +64,12 @@ jobs:
           npm install
           npx cap add android
           npx capacitor-assets generate --android || true
+          python3 make_manifest.py
           npx cap sync android
+      - name: Постоянный ключ подписи
+        run: |
+          mkdir -p ~/.android
+          cp native/mobile/debug.keystore ~/.android/debug.keystore
       - name: Собрать APK
         working-directory: native/mobile/android
         run: ./gradlew assembleDebug --no-daemon

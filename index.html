@@ -1145,7 +1145,57 @@ function loadGis(){
 // Получить ключ доступа. prompt: 'select_account' — выбрать аккаунт, '' — обычный вход, 'none' — тихо, без окон
 // В приложении для компьютера вход идёт через обычный браузер (его даёт оболочка Electron, window.desktopAuth),
 // а продление — тихо, по долгоживущему ключу, который хранится зашифрованным на устройстве.
-const nativeAuth = () => (typeof window !== 'undefined' && window.desktopAuth) || null;
+// Android (оболочка Capacitor): вход в системном браузере (Chrome Custom Tab), возврат через ссылку com.moyuniver.app:/oauth2redirect
+const ANDROID_CLIENT_ID = '';
+const ANDROID_REDIRECT = 'com.moyuniver.app:/oauth2redirect';
+const REFRESH_KEY = 'moyUniversitet.driveRefresh';
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function googleTokenCall(params){
+  const r = await fetch('https://oauth2.googleapis.com/token', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:new URLSearchParams(Object.assign({ client_id:ANDROID_CLIENT_ID }, params)) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'http' + r.status);
+  return j;
+}
+function androidAuth(){
+  const C = window.Capacitor;
+  if (!(C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.Browser && C.Plugins.App)) return null;
+  const { Browser, App } = C.Plugins;
+  return {
+    async refresh(){
+      let rt = ''; try { rt = localStorage.getItem(REFRESH_KEY) || ''; } catch(_) {}
+      if (!rt || !ANDROID_CLIENT_ID) return null;
+      try { const t = await googleTokenCall({ refresh_token:rt, grant_type:'refresh_token' }); return { access_token:t.access_token, expires_in:t.expires_in }; }
+      catch(e){ if (e.message === 'invalid_grant') try { localStorage.removeItem(REFRESH_KEY); } catch(_) {} return null; }
+    },
+    async login(hint){
+      if (!ANDROID_CLIENT_ID) throw new Error('config');
+      const verifier = b64url(crypto.getRandomValues(new Uint8Array(48))), state = b64url(crypto.getRandomValues(new Uint8Array(16)));
+      const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+      const q = new URLSearchParams({ client_id:ANDROID_CLIENT_ID, redirect_uri:ANDROID_REDIRECT, response_type:'code', scope:DRIVE_SCOPE, state,
+        code_challenge:challenge, code_challenge_method:'S256', access_type:'offline', prompt:'consent' });
+      if (hint) q.set('login_hint', hint);
+      const code = await new Promise((resolve, reject) => {
+        let handle = null;
+        const timer = setTimeout(() => done(new Error('popup_timeout')), 5 * 60 * 1000);
+        function done(err, val){ clearTimeout(timer); if (handle) handle.remove(); try { Browser.close(); } catch(_) {} err ? reject(err) : resolve(val); }
+        App.addListener('appUrlOpen', ev => {
+          if (!ev.url || !ev.url.startsWith(ANDROID_REDIRECT)) return;
+          const u = new URL(ev.url.replace(ANDROID_REDIRECT, 'https://x/cb'));
+          const err = u.searchParams.get('error'), got = u.searchParams.get('code');
+          if (u.searchParams.get('state') !== state || err || !got) return done(new Error(err === 'access_denied' ? 'access_denied' : 'popup_failed'));
+          done(null, got);
+        }).then(h => { handle = h; });
+        Browser.open({ url:'https://accounts.google.com/o/oauth2/v2/auth?' + q.toString() }).catch(e => done(e));
+      });
+      const t = await googleTokenCall({ code, code_verifier:verifier, grant_type:'authorization_code', redirect_uri:ANDROID_REDIRECT });
+      if (t.refresh_token) try { localStorage.setItem(REFRESH_KEY, t.refresh_token); } catch(_) {}
+      return { access_token:t.access_token, expires_in:t.expires_in };
+    },
+    async logout(){ let rt = ''; try { rt = localStorage.getItem(REFRESH_KEY) || ''; localStorage.removeItem(REFRESH_KEY); } catch(_) {} if (rt) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(rt), { method:'POST' }).catch(() => {}); return true; }
+  };
+}
+let androidAuthObj;
+const nativeAuth = () => (typeof window !== 'undefined' && window.desktopAuth) || (androidAuthObj || (androidAuthObj = androidAuth()));
 async function nativeToken(prompt, hint, force){
   const na = nativeAuth();
   let r = null;
