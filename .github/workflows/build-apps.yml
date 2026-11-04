@@ -49,13 +49,8 @@ jobs:
           mkdir -p native/mobile/www native/mobile/assets
           cp index.html manifest.webmanifest native/mobile/www/
           cp -r icons native/mobile/www/icons
-          python3 -c "
-          from PIL import Image
-          im = Image.open('icons/icon-512.png').convert('RGBA').resize((1024, 1024), Image.LANCZOS)
-          im.save('native/mobile/assets/icon-only.png')
-          im.save('native/mobile/assets/icon-foreground.png')
-          Image.new('RGBA', (1024, 1024), (240, 240, 246, 255)).save('native/mobile/assets/icon-background.png')
-          "
+          pip install pillow
+          python3 native/mobile/make_icons.py
       - name: Собрать Android-проект
         working-directory: native/mobile
         run: |
