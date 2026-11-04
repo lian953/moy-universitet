@@ -1110,7 +1110,11 @@ const driveCfg = () => state.settings.drive;
 const DRIVE_CLIENT_ID = '435927535973-8ghkn3pmrpc6ve1s932jhk5b6ujcvgkp.apps.googleusercontent.com';
 const driveClientId = () => DRIVE_CLIENT_ID;
 const driveUi = { busy:false, msg:'', kind:'', quota:null, warned:false, email:'' };
-let driveToken = null, driveTokenExp = 0, driveTimer = null, driveLast = 0;
+let driveToken = null, driveTokenExp = 0, driveTimer = null, driveLast = 0, driveNeedAuth = false;
+// Ключ доступа Google живёт 1 час. Храним его на этом устройстве, чтобы не просить вход после каждого обновления страницы.
+const TOKEN_KEY = 'moyUniversitet.driveToken';
+(function(){ try { const t = JSON.parse(localStorage.getItem(TOKEN_KEY) || 'null'); if (t && t.exp > Date.now()){ driveToken = t.token; driveTokenExp = t.exp; } } catch(_) {} })();
+const rememberToken = () => { try { if (driveToken) localStorage.setItem(TOKEN_KEY, JSON.stringify({ token:driveToken, exp:driveTokenExp })); else localStorage.removeItem(TOKEN_KEY); } catch(_) {} };
 
 const fmtBytes = b => {
   b = +b; if (!b) return '0 Б';
@@ -1147,7 +1151,7 @@ function requestToken(prompt, hint){
       callback: resp => {
         if (resp.error) return reject(new Error(resp.error));
         if (!google.accounts.oauth2.hasGrantedAllScopes(resp, 'https://www.googleapis.com/auth/drive.file')) return reject(new Error('scope'));
-        driveToken = resp.access_token; driveTokenExp = Date.now() + (Number(resp.expires_in) - 60) * 1000;
+        driveToken = resp.access_token; driveTokenExp = Date.now() + (Number(resp.expires_in) - 60) * 1000; driveNeedAuth = false; rememberToken();
         resolve(driveToken);
       },
       error_callback: err => reject(new Error((err && err.type) || 'popup'))
@@ -1161,7 +1165,7 @@ const validToken = () => tokenValid() ? Promise.resolve(driveToken) : requestTok
 async function driveFetch(url, opts = {}){
   const token = await validToken();
   const r = await fetch(url, Object.assign({}, opts, { headers: Object.assign({}, opts.headers, { Authorization:'Bearer ' + token }) }));
-  if (r.status === 401){ driveToken = null; throw new Error('auth'); }
+  if (r.status === 401){ driveToken = null; rememberToken(); throw new Error('auth'); }
   if (!r.ok){ const e = new Error('http' + r.status); e.status = r.status; try { e.body = await r.text(); } catch(_) {} throw e; }
   return r;
 }
@@ -1257,6 +1261,7 @@ async function driveRun(mode, quiet){
     driveQuota();
   } catch(e){
     driveSay(driveExplain(e), 'err');
+    if (/^(auth|popup|interaction|login_required|consent|immediate)/i.test(String(e && e.message))) driveNeedAuth = true;
     if (quiet && !driveUi.warned){ driveUi.warned = true; toast('Google Диск: ' + driveExplain(e)); }
   } finally { driveUi.busy = false; saveQuiet(); renderSettings(); }
 }
@@ -1272,7 +1277,7 @@ async function driveConnect(){
     const info = await (await driveFetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();
     if ((info.email || '').toLowerCase() !== mail.toLowerCase()){
       try { google.accounts.oauth2.revoke(driveToken, () => {}); } catch(_) {}
-      driveToken = null; driveTokenExp = 0;
+      driveToken = null; driveTokenExp = 0; rememberToken();
       throw new Error('mismatch:' + (info.email || ''));
     }
     Object.assign(d, { connected:true, email:info.email || mail, name:info.name || '', lastRemote:'', dirty:false, conflict:false });
@@ -1286,6 +1291,7 @@ async function driveConnect(){
   finally { driveUi.busy = false; saveQuiet(); renderSettings(); }
 }
 async function driveReauth(){
+  if (driveUi.busy) return;
   driveUi.busy = true; driveSay('Открываю вход Google…'); renderSettings();
   try { await requestToken(''); driveUi.busy = false; driveUi.warned = false; await driveRun('auto', false); }
   catch(e){ driveSay(driveExplain(e), 'err'); }
@@ -1294,7 +1300,7 @@ async function driveReauth(){
 function driveDisconnect(){
   if (!confirm('Отвязать аккаунт Google? Файл с данными на Диске останется на месте.')) return;
   try { if (driveToken && typeof google !== 'undefined') google.accounts.oauth2.revoke(driveToken, () => {}); } catch(e) {}
-  driveToken = null; driveTokenExp = 0; clearTimeout(driveTimer);
+  driveToken = null; driveTokenExp = 0; rememberToken(); clearTimeout(driveTimer);
   Object.assign(driveCfg(), { connected:false, email:'', name:'', lastSync:'', lastRemote:'', dirty:false, conflict:false });
   driveUi.msg = ''; driveUi.quota = null; saveQuiet(); renderSettings();
   toast('Аккаунт отвязан. Файл на Диске остался на месте.');
@@ -2115,6 +2121,11 @@ document.addEventListener('change', e => {
   if (e.target.id === 'driveEmail'){ driveUi.email = e.target.value.trim(); }
   if (e.target.id === 'fileInput'){ const fl = [...e.target.files]; uploadFiles(e.target.dataset.subj, fl); e.target.value = ''; }
 });
+// Если тихое продление входа не удалось, подтверждаем вход одним касанием (браузер разрешает окно только после нажатия)
+document.addEventListener('pointerup', () => {
+  if (!driveNeedAuth || driveUi.busy || !driveCfg().connected) return;
+  driveNeedAuth = false; driveReauth();
+}, { passive:true });
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && driveCfg().connected && Date.now() - driveLast > 60000) driveRun('auto', true);
 });
