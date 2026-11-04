@@ -1180,14 +1180,13 @@ function androidAuth(){
         let handle = null;
         const timer = setTimeout(() => done(new Error('popup_timeout')), 5 * 60 * 1000);
         function done(err, val){ clearTimeout(timer); if (handle) handle.remove(); try { Browser.close(); } catch(_) {} err ? reject(err) : resolve(val); }
-        App.addListener('appUrlOpen', ev => {
+        Promise.resolve(App.addListener('appUrlOpen', ev => {
           if (!ev.url || !ev.url.startsWith(ANDROID_REDIRECT)) return;
           const u = new URL(ev.url.replace(ANDROID_REDIRECT, 'https://x/cb'));
           const err = u.searchParams.get('error'), got = u.searchParams.get('code');
           if (u.searchParams.get('state') !== state || err || !got) return done(new Error(err === 'access_denied' ? 'access_denied' : 'popup_failed'));
           done(null, got);
-        }).then(h => { handle = h; });
-        Browser.open({ url:'https://accounts.google.com/o/oauth2/v2/auth?' + q.toString() }).catch(e => done(e));
+        })).then(h => { handle = h; return Browser.open({ url:'https://accounts.google.com/o/oauth2/v2/auth?' + q.toString() }); }).catch(e => done(e));
       });
       const t = await googleTokenCall({ code, code_verifier:verifier, grant_type:'authorization_code', redirect_uri:ANDROID_REDIRECT });
       if (t.refresh_token) try { localStorage.setItem(REFRESH_KEY, t.refresh_token); } catch(_) {}
