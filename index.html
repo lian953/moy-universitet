@@ -1243,7 +1243,10 @@ function driveExplain(e){
   if (m === 'gis') return 'Не удалось загрузить вход Google. Проверь интернет.';
   if (e && e.status === 403 && /accessNotConfigured|has not been used|disabled/i.test(body)) return 'В проекте Google Cloud не включён Google Drive API. Включи его (шаг 2 инструкции).';
   if (e && e.status === 403 && /insufficient|scope|permission/i.test(body)) return 'Google не выдал доступ к Диску. Отвяжи аккаунт и войди снова, на экране Google отметь галочку доступа к Диску.';
-  if (e && e.status === 403) return 'Google отказал в доступе (403). Проверь, что твой аккаунт добавлен в тестовые пользователи.';
+  if (e && e.status === 403){
+    let why = ''; try { const j = JSON.parse(body).error || {}; why = ((j.errors && j.errors[0] && j.errors[0].reason) || j.status || '') + (j.message ? ': ' + j.message : ''); } catch(_) { why = body.slice(0, 160); }
+    return 'Google отказал в доступе (403' + (why ? ', ' + why.slice(0, 200) : '') + '). Проверь, что твой аккаунт добавлен в тестовые пользователи и включён Google Drive API.';
+  }
   if (e && e.status === 404) return 'Файл на Диске не найден. Нажми «Отправить на Диск».';
   if (e && e.status === 429) return 'Google просит подождать: слишком много запросов. Попробуй чуть позже.';
   if (e instanceof TypeError) return 'Нет связи с Google (' + m + '). Проверь интернет.';
