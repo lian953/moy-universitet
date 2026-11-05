@@ -1306,7 +1306,14 @@ async function driveSync(mode){
   if (mode === 'pull'){ if (!loc.file) throw Object.assign(new Error('http404'), { status:404 }); await drivePull(loc); return 'pulled'; }
   const d = driveCfg();
   if (!loc.file){ await drivePush(loc); return 'pushed'; }
-  if (!d.lastRemote){ d.conflict = true; return 'conflict'; }                // первая привязка, а на Диске уже есть данные
+  if (!d.lastRemote){                                                         // первая привязка, а на Диске уже есть файл
+    const hasData = x => !!x && ['subjects', 'lessons', 'tasks', 'exams'].some(k => Array.isArray(x[k]) && x[k].length);
+    let remote = null;
+    try { const o = JSON.parse(await (await driveFetch(GAPI + '/files/' + loc.file.id + '?alt=media')).text()); remote = o.state || o; } catch(_) {}
+    if (remote && !hasData(state) && hasData(remote)){ await drivePull(loc); return 'pulled'; }      // здесь пусто, на Диске есть данные — берём с Диска
+    if (hasData(state) && !hasData(remote)){ await drivePush(loc); return 'pushed'; }                // на Диске пусто — отправляем свои
+    d.conflict = true; return 'conflict';                                      // данные есть и там, и тут: выбирает человек
+  }
   if (loc.file.modifiedTime === d.lastRemote){ if (d.dirty){ await drivePush(loc); return 'pushed'; } return 'same'; }
   if (!d.dirty){ await drivePull(loc); return 'pulled'; }                    // на Диске новее, здесь ничего не менялось
   d.conflict = true; return 'conflict';                                      // менялось и там, и тут
