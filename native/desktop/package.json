@@ -7,18 +7,60 @@
   "author": "Варя",
   "license": "UNLICENSED",
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "electron": "^45.3.0",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.moyuniver.app",
     "productName": "Мой универ",
     "artifactName": "Moy-universitet-${arch}.${ext}",
-    "files": ["main.js", "preload.js", "gauth.js", "google-desktop.json", "www/**/*", "build/icon.png"],
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "portable", "arch": ["x64"] }], "icon": "build/icon.png" },
-    "portable": { "artifactName": "Moy-universitet-portable.exe" },
-    "nsis": { "artifactName": "Moy-universitet-Setup.exe", "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false },
-    "linux": { "target": ["AppImage"], "icon": "build/icon.png", "category": "Education" },
-    "mac": { "target": ["dmg"], "icon": "build/icon.png", "category": "public.app-category.education" }
+    "files": [
+      "main.js",
+      "preload.js",
+      "gauth.js",
+      "google-desktop.json",
+      "www/**/*",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "Moy-universitet-portable.exe"
+    },
+    "nsis": {
+      "artifactName": "Moy-universitet-Setup.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Education"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.education"
+    }
   }
 }
