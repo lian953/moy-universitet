@@ -13,3 +13,11 @@ assert '</activity>' in s
 if 'com.moyuniver.app" />' not in s:
     s = s.replace('</activity>', flt + '        </activity>', 1)
 open(p, 'w', encoding='utf-8').write(s)
+
+# Запрещаем облачное/adb-копирование данных приложения (в них лежит ключ входа Google)
+s = open(p, encoding='utf-8').read()
+import re
+s = re.sub(r'android:allowBackup="[^"]*"', 'android:allowBackup="false"', s)
+if 'android:allowBackup' not in s:
+    s = s.replace('<application', '<application android:allowBackup="false"', 1)
+open(p, 'w', encoding='utf-8').write(s)

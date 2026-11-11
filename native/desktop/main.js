@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 47821;
-const ROOT = path.join(__dirname, 'www');
+const ROOT = path.resolve(path.join(__dirname, 'www'));
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json', '.png': 'image/png',
@@ -17,10 +17,13 @@ const TYPES = {
 function startServer(){
   return new Promise(resolve => {
     const server = http.createServer((req, res) => {
-      let p = decodeURIComponent((req.url || '/').split('?')[0]);
+      let p;
+      try { p = decodeURIComponent((req.url || '/').split('?')[0]); }
+      catch(_) { res.writeHead(400); return res.end('Bad request'); }       // кривой адрес (например, «%») не должен ронять приложение
+      if (p.includes('\0')){ res.writeHead(400); return res.end(); }
       if (p.endsWith('/')) p += 'index.html';
       const file = path.normalize(path.join(ROOT, p));
-      if (!file.startsWith(ROOT)){ res.writeHead(403); return res.end(); }
+      if (file !== ROOT && !file.startsWith(ROOT + path.sep)){ res.writeHead(403); return res.end(); }
       fs.readFile(file, (err, data) => {
         if (err){ res.writeHead(404); return res.end('Not found'); }
         res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream' });
