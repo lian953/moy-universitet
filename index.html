@@ -558,6 +558,20 @@ label.attach.dis{opacity:.6; cursor:default; pointer-events:none}
 </dialog>
 
 <script>
+// Показываем причину прямо на экране, чтобы её можно было сфотографировать (вместо молчаливой пустой страницы)
+function showFatal(msg){
+  try {
+    let b = document.getElementById('fatalBar');
+    if (!b){ b = document.createElement('div'); b.id = 'fatalBar';
+      b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:var(--card,#fff);color:var(--text,#222);border:1px solid #d33;border-radius:16px;padding:10px 14px;font:12px/1.4 Manrope,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.2)';
+      document.body.appendChild(b); }
+    b.textContent = 'Ошибка: ' + String(msg).slice(0, 300);
+  } catch(_) {}
+}
+window.addEventListener('error', e => showFatal((e.message || 'ошибка') + (e.lineno ? ' (строка ' + e.lineno + ')' : '')));
+window.addEventListener('unhandledrejection', e => showFatal('promise: ' + (e.reason && e.reason.message || e.reason)));
+</script>
+<script>
 /* =========================================================
    1. ДАННЫЕ
    Всё хранится в браузере (localStorage) в одном объекте state:
@@ -696,8 +710,11 @@ function dueLabel(due){
 function renderAll(){
   document.documentElement.dataset.theme = state.settings.theme;
   $('#today').textContent = new Date().toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
-  renderHero(); renderAlerts(); renderWeek(); renderTasks(); renderCalendar(); renderSubjects(); renderSettings(); showTab();
-  if (typeof widgetPush === 'function') widgetPush();
+  // Каждый кусок рисуется отдельно: сбой в одном месте не должен оставлять остальное приложение пустым
+  [renderHero, renderAlerts, renderWeek, renderTasks, renderCalendar, renderSubjects, renderSettings, showTab].forEach(fn => {
+    try { fn(); } catch(err) { showFatal(fn.name + ': ' + (err && err.message || err)); }
+  });
+  try { if (typeof widgetPush === 'function') widgetPush(); } catch(err) { showFatal('widget: ' + (err && err.message || err)); }
 }
 
 /* ---------- Шапка: дата и три плитки ---------- */
@@ -1714,7 +1731,7 @@ const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: stan
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; renderSettings(); });
 window.addEventListener('appinstalled', () => { installEvt = null; toast('Приложение установлено'); renderSettings(); });
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol))
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.desktopAuth)   // в оболочке для ПК кеш не нужен: сервер локальный
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 
 function installBlock(){
@@ -2297,7 +2314,7 @@ document.addEventListener('change', e => {
 });
 
 // Окошко виджета на компьютере закрыли кнопкой × в самом окошке
-{ const dw = desktopWidget(); if (dw && dw.onClosed) dw.onClosed(() => { state.settings.widget.open = false; saveQuiet(); renderAll(); }); }
+try { const dw = desktopWidget(); if (dw && dw.onClosed) dw.onClosed(() => { state.settings.widget.open = false; saveQuiet(); renderAll(); }); } catch(err) { showFatal('widget: ' + err.message); }
 
 renderAll();
 checkReminders();

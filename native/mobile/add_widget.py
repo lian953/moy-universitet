@@ -251,6 +251,7 @@ write(BASE + '/res/xml/moy_widget_info.xml', r'''<?xml version="1.0" encoding="u
     android:updatePeriodMillis="1800000"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:description="@string/app_name"
     android:initialLayout="@layout/moy_widget" />
 ''')
 
@@ -259,7 +260,7 @@ mp = BASE + '/AndroidManifest.xml'
 s = open(mp, encoding='utf-8').read()
 if 'MoyWidgetProvider' not in s:
     receiver = '''
-        <receiver android:name=".MoyWidgetProvider" android:exported="false" android:label="Мой универ">
+        <receiver android:name=".MoyWidgetProvider" android:exported="true" android:label="Мой универ">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
