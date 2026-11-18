@@ -1909,20 +1909,20 @@ const androidWidget = () => {
   if (!(C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin)) return null;
   try { return C.registerPlugin('WidgetBridge'); } catch(_) { return null; }
 };
-const desktopWidget = () => (typeof window !== 'undefined' && window.desktopWidget) || null;
+const getDesktopWidget = () => (typeof window !== 'undefined' && window.desktopWidget) || null;
 let widgetTimer = null;
 function widgetPush(){
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     try {
-      const snap = widgetData(), dw = desktopWidget(), aw = androidWidget();
+      const snap = widgetData(), dw = getDesktopWidget(), aw = androidWidget();
       if (dw) dw.update(snap, !!state.settings.widget.open);
       if (aw) aw.update({ json:JSON.stringify(snap) }).catch(() => {});
     } catch(_) {}
   }, 500);
 }
 function widgetBlock(){
-  const dw = desktopWidget(), aw = androidWidget(), w = state.settings.widget;
+  const dw = getDesktopWidget(), aw = androidWidget(), w = state.settings.widget;
   const types = `<div class="seg">` + WIDGET_TYPES.map(([k, t]) =>
     `<button data-act="wtype" data-id="${k}" class="${w.type === k ? 'on' : ''}">${esc(t)}</button>`).join('') + `</div>`;
   if (dw) return `<h3>Виджет</h3><p class="empty">Маленькое окошко поверх окон. Его можно перетащить на рабочий стол и закрепить в углу.</p>${types}
@@ -2314,7 +2314,7 @@ document.addEventListener('change', e => {
 });
 
 // Окошко виджета на компьютере закрыли кнопкой × в самом окошке
-try { const dw = desktopWidget(); if (dw && dw.onClosed) dw.onClosed(() => { state.settings.widget.open = false; saveQuiet(); renderAll(); }); } catch(err) { showFatal('widget: ' + err.message); }
+try { const dw = getDesktopWidget(); if (dw && dw.onClosed) dw.onClosed(() => { state.settings.widget.open = false; saveQuiet(); renderAll(); }); } catch(err) { showFatal('widget: ' + err.message); }
 
 renderAll();
 checkReminders();
