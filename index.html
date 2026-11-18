@@ -1731,8 +1731,13 @@ const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: stan
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; renderSettings(); });
 window.addEventListener('appinstalled', () => { installEvt = null; toast('Приложение установлено'); renderSettings(); });
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.desktopAuth)   // в оболочке для ПК кеш не нужен: сервер локальный
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  // В оболочках для ПК и Android кеш сайта не нужен (страница уже внутри приложения): убираем старый, чтобы не показывалась прошлая версия
+  if (window.desktopAuth || isNativeApp()){
+    navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+    if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
+  } else window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 
 function installBlock(){
   let body;
@@ -1904,10 +1909,15 @@ function widgetData(){
   }
   return { v:1, type, typeName, theme:state.settings.theme, gen:now, empty, items };
 }
+function isNativeApp(){ try { const C = window.Capacitor; return !!(C && C.isNativePlatform && C.isNativePlatform()); } catch(_) { return false; } }
+let _wb = null, widgetErr = '';
 const androidWidget = () => {
-  const C = typeof window !== 'undefined' && window.Capacitor;
-  if (!(C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin)) return null;
-  try { return C.registerPlugin('WidgetBridge'); } catch(_) { return null; }
+  if (!isNativeApp()) return null;
+  if (_wb) return _wb;
+  const C = window.Capacitor;
+  try { _wb = (C.Plugins && C.Plugins.WidgetBridge) || (C.registerPlugin && C.registerPlugin('WidgetBridge')) || null; }
+  catch(e){ widgetErr = String((e && e.message) || e); _wb = null; }
+  return _wb;
 };
 const getDesktopWidget = () => (typeof window !== 'undefined' && window.desktopWidget) || null;
 let widgetTimer = null, widgetBridge = '';
@@ -1917,6 +1927,7 @@ function widgetPush(){
     try {
       const snap = widgetData(), dw = getDesktopWidget(), aw = androidWidget();
       if (dw) dw.update(snap, !!state.settings.widget.open);
+      if (!aw && isNativeApp() && widgetBridge !== 'нет моста'){ widgetBridge = 'нет моста'; renderSettings(); }
       if (aw) aw.update({ json:JSON.stringify(snap) }).then(() => { if (widgetBridge !== 'ok'){ widgetBridge = 'ok'; renderSettings(); } }).catch(e => { widgetBridge = 'нет связи с виджетом: ' + ((e && e.message) || e); renderSettings(); });
     } catch(_) {}
   }, 500);
@@ -1927,10 +1938,10 @@ function widgetBlock(){
     `<button data-act="wtype" data-id="${k}" class="${w.type === k ? 'on' : ''}">${esc(t)}</button>`).join('') + `</div>`;
   if (dw) return `<h3>Виджет</h3><p class="empty">Маленькое окошко поверх окон. Его можно перетащить на рабочий стол и закрепить в углу.</p>${types}
      <div class="seg"><button data-act="wtoggle">${w.open ? 'Скрыть окошко' : 'Показать окошко'}</button></div>`;
-  if (aw) return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона. Выбери, что он показывает, и добавь его.</p>${types}
+  if (aw || isNativeApp()) return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона. Выбери, что он показывает, и добавь его.</p>${types}
      <div class="seg"><button data-act="wpin">Добавить на главный экран</button></div>
      <p class="empty">Если кнопка не сработала: долгое нажатие на главном экране → «Виджеты» → «Мой универ».</p>
-     <p class="empty">Связь с виджетом: ${esc(widgetBridge === 'ok' ? 'работает' : widgetBridge || 'проверяется…')}</p>`;
+     <p class="empty">Связь с виджетом: ${esc(widgetBridge === 'ok' ? 'работает' : widgetBridge || (aw ? 'проверяется…' : 'мост не найден' + (widgetErr ? ': ' + widgetErr : '')))}</p>`;
   return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона и окошко на рабочем столе есть в приложениях для Android и Windows. Выбранный здесь тип запомнится в них отдельно.</p>`;
 }
 
