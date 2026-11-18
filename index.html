@@ -1910,14 +1910,14 @@ const androidWidget = () => {
   try { return C.registerPlugin('WidgetBridge'); } catch(_) { return null; }
 };
 const getDesktopWidget = () => (typeof window !== 'undefined' && window.desktopWidget) || null;
-let widgetTimer = null;
+let widgetTimer = null, widgetBridge = '';
 function widgetPush(){
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     try {
       const snap = widgetData(), dw = getDesktopWidget(), aw = androidWidget();
       if (dw) dw.update(snap, !!state.settings.widget.open);
-      if (aw) aw.update({ json:JSON.stringify(snap) }).catch(() => {});
+      if (aw) aw.update({ json:JSON.stringify(snap) }).then(() => { if (widgetBridge !== 'ok'){ widgetBridge = 'ok'; renderSettings(); } }).catch(e => { widgetBridge = 'нет связи с виджетом: ' + ((e && e.message) || e); renderSettings(); });
     } catch(_) {}
   }, 500);
 }
@@ -1929,7 +1929,8 @@ function widgetBlock(){
      <div class="seg"><button data-act="wtoggle">${w.open ? 'Скрыть окошко' : 'Показать окошко'}</button></div>`;
   if (aw) return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона. Выбери, что он показывает, и добавь его.</p>${types}
      <div class="seg"><button data-act="wpin">Добавить на главный экран</button></div>
-     <p class="empty">Если кнопка не сработала: долгое нажатие на главном экране → «Виджеты» → «Мой универ».</p>`;
+     <p class="empty">Если кнопка не сработала: долгое нажатие на главном экране → «Виджеты» → «Мой универ».</p>
+     <p class="empty">Связь с виджетом: ${esc(widgetBridge === 'ok' ? 'работает' : widgetBridge || 'проверяется…')}</p>`;
   return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона и окошко на рабочем столе есть в приложениях для Android и Windows. Выбранный здесь тип запомнится в них отдельно.</p>`;
 }
 
