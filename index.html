@@ -1843,6 +1843,75 @@ function notifyBlock(){
 }
 
 /* ---------- Ещё (настройки и резервная копия) ---------- */
+/* =========================================================
+   ВИДЖЕТ: данные для окошка на компьютере и виджета на главном экране Android
+   Приложение собирает «снимок» (что показать) и отдаёт его оболочке; сам виджет только рисует.
+   ========================================================= */
+const WIDGET_MAX = 6;
+const atMs = (dateISO, hm) => new Date(dateISO + 'T' + (hm || '00:00') + ':00').getTime();
+function widgetData(){
+  const type = state.settings.widget.type, now = Date.now(), nowD = new Date();
+  const todayISO = iso(nowD), endToday = atMs(todayISO, '23:59');
+  const typeName = (WIDGET_TYPES.find(w => w[0] === type) || WIDGET_TYPES[0])[1];
+  const lessonsFor = days => {
+    const out = [];
+    for (let i = 0; i < days; i++){
+      const d = new Date(nowD); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + i);
+      const di = iso(d), idx = (d.getDay() + 6) % 7;
+      if ((state.dayoffs || []).some(x => (x.date || x) === di)) continue;
+      state.lessons.filter(l => lessonOn(l, di, idx)).sort((a, b) => a.start.localeCompare(b.start)).forEach(l => {
+        out.push({ s:atMs(di, l.start), e:atMs(di, l.end), a:subj(l.subjectId).name,
+                   b:[l.start + '–' + l.end, l.room, l.kind].filter(Boolean).join(' · '), k:'lesson', dt:di });
+      });
+    }
+    return out.filter(x => x.e >= now).sort((a, b) => a.s - b.s);
+  };
+  let items = [], empty = '';
+  if (type === 'next'){ items = lessonsFor(8).slice(0, 3); empty = 'Ближайших пар нет'; }
+  else if (type === 'today'){ items = lessonsFor(1).slice(0, WIDGET_MAX); empty = 'Сегодня больше нет пар'; }
+  else if (type === 'deadlines'){
+    items = state.tasks.filter(t => !t.done && t.due).sort((a, b) => a.due.localeCompare(b.due)).slice(0, WIDGET_MAX)
+      .map(t => ({ s:atMs(t.due, '00:00'), e:Math.max(atMs(t.due, '23:59'), endToday), a:t.title,
+                   b:subj(t.subjectId).name, k:'task', dt:t.due }));
+    empty = 'Дедлайнов нет';
+  } else {
+    items = state.exams.filter(e => e.date && !e.passed && e.date >= todayISO).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).slice(0, 4)
+      .map(e => ({ s:atMs(e.date, e.time || '00:00'), e:Math.max(atMs(e.date, '23:59'), endToday),
+                   a:(EXAM_KIND[e.kind] || 'Экзамен') + ': ' + e.title, b:[e.time, e.room].filter(Boolean).join(' · '), k:'exam', dt:e.date }));
+    empty = 'Экзаменов пока нет';
+  }
+  return { v:1, type, typeName, theme:state.settings.theme, gen:now, empty, items };
+}
+const androidWidget = () => {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  if (!(C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin)) return null;
+  try { return C.registerPlugin('WidgetBridge'); } catch(_) { return null; }
+};
+const getDesktopWidget = () => (typeof window !== 'undefined' && window.desktopWidget) || null;
+let widgetTimer = null, widgetBridge = '';
+function widgetPush(){
+  clearTimeout(widgetTimer);
+  widgetTimer = setTimeout(() => {
+    try {
+      const snap = widgetData(), dw = getDesktopWidget(), aw = androidWidget();
+      if (dw) dw.update(snap, !!state.settings.widget.open);
+      if (aw) aw.update({ json:JSON.stringify(snap) }).then(() => { if (widgetBridge !== 'ok'){ widgetBridge = 'ok'; renderSettings(); } }).catch(e => { widgetBridge = 'нет связи с виджетом: ' + ((e && e.message) || e); renderSettings(); });
+    } catch(_) {}
+  }, 500);
+}
+function widgetBlock(){
+  const dw = getDesktopWidget(), aw = androidWidget(), w = state.settings.widget;
+  const types = `<div class="seg">` + WIDGET_TYPES.map(([k, t]) =>
+    `<button data-act="wtype" data-id="${k}" class="${w.type === k ? 'on' : ''}">${esc(t)}</button>`).join('') + `</div>`;
+  if (dw) return `<h3>Виджет</h3><p class="empty">Маленькое окошко поверх окон. Его можно перетащить на рабочий стол и закрепить в углу.</p>${types}
+     <div class="seg"><button data-act="wtoggle">${w.open ? 'Скрыть окошко' : 'Показать окошко'}</button></div>`;
+  if (aw) return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона. Выбери, что он показывает, и добавь его.</p>${types}
+     <div class="seg"><button data-act="wpin">Добавить на главный экран</button></div>
+     <p class="empty">Если кнопка не сработала: долгое нажатие на главном экране → «Виджеты» → «Мой универ».</p>
+     <p class="empty">Связь с виджетом: ${esc(widgetBridge === 'ok' ? 'работает' : widgetBridge || 'проверяется…')}</p>`;
+  return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона и окошко на рабочем столе есть в приложениях для Android и Windows. Выбранный здесь тип запомнится в них отдельно.</p>`;
+}
+
 function renderSettings(){
   const th = state.settings.theme, grp = state.settings.group;
   const groups = [...new Set(state.lessons.flatMap(l => l.groups || []))].sort();
@@ -2217,6 +2286,9 @@ document.addEventListener('change', e => {
   state.settings.notify.time = e.target.value || '09:00';
   commit(); checkReminders();
 });
+
+// Окошко виджета на компьютере закрыли кнопкой × в самом окошке
+try { const dw = getDesktopWidget(); if (dw && dw.onClosed) dw.onClosed(() => { state.settings.widget.open = false; saveQuiet(); renderAll(); }); } catch(err) { showFatal('widget: ' + err.message); }
 
 renderAll();
 checkReminders();
