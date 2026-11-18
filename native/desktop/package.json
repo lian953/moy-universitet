@@ -16,7 +16,7 @@
     "artifactName": "Moy-universitet-${arch}.${ext}",
     "files": [
       "main.js",
-      "preload.js",
+      "preload.js", "widget.js", "widget-preload.js",
       "gauth.js",
       "google-desktop.json",
       "www/**/*",

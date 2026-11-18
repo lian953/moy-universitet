@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'">
+<title>Мой универ — виджет</title>
+<style>
+:root{--bg:#f0f0f6; --card:#ffffff; --text:#1b1a2e; --muted:#6d6b85; --accent:#5b4af0; --line:rgba(0,0,0,.08)}
+:root[data-theme="dark"]{--bg:#140d10; --card:#211519; --text:#f4ecee; --muted:#b39aa1; --accent:#ff4d6a; --line:rgba(255,255,255,.1)}
+*{box-sizing:border-box}
+html,body{margin:0; height:100%; background:var(--bg); color:var(--text); font:14px/1.35 system-ui,"Segoe UI",Roboto,sans-serif; overflow:hidden; user-select:none; cursor:default}
+.wrap{display:flex; flex-direction:column; height:100%; padding:10px 12px 8px}
+.head{display:flex; align-items:center; gap:8px; -webkit-app-region:drag; padding-bottom:6px}
+.head h1{flex:1; margin:0; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700}
+.x{-webkit-app-region:no-drag; width:24px; height:24px; border:0; border-radius:999px; background:var(--card); color:var(--muted); font-size:15px; line-height:1; cursor:pointer}
+.x:hover{background:var(--accent); color:#fff}
+.list{flex:1; overflow:auto; display:flex; flex-direction:column; gap:6px; cursor:pointer}
+.it{background:var(--card); border-radius:14px; padding:8px 10px; border:1px solid var(--line)}
+.it b{display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.it span{display:block; color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.it .when{color:var(--accent); font-weight:700}
+.empty{margin:auto; text-align:center; color:var(--muted); padding:12px}
+.foot{font-size:11px; color:var(--muted); text-align:right; padding-top:4px; min-height:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><h1 id="title">Мой универ</h1><button class="x" id="close" title="Закрыть виджет">×</button></div>
+  <div class="list" id="list"></div>
+  <div class="foot" id="foot"></div>
+</div>
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+let snap = null;
+function daysLabel(dt){
+  const a = new Date(dt + 'T00:00:00'), b = new Date(); b.setHours(0, 0, 0, 0);
+  const n = Math.round((a - b) / 864e5);
+  return n < 0 ? 'просрочено' : n === 0 ? 'сегодня' : n === 1 ? 'завтра' : 'через ' + n + ' дн.';
+}
+function lessonDay(dt){
+  const a = new Date(dt + 'T00:00:00'), b = new Date(); b.setHours(0, 0, 0, 0);
+  const n = Math.round((a - b) / 864e5);
+  return n <= 0 ? '' : n === 1 ? 'завтра' : a.toLocaleDateString('ru-RU', { weekday:'short', day:'numeric', month:'numeric' });
+}
+const hm = ms => new Date(ms).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+function draw(){
+  const list = document.getElementById('list');
+  if (!snap){ list.innerHTML = '<div class="empty">Открой приложение, чтобы данные появились здесь</div>'; return; }
+  document.documentElement.dataset.theme = snap.theme === 'dark' ? 'dark' : 'light';
+  document.getElementById('title').textContent = snap.typeName || 'Мой универ';
+  const now = Date.now();
+  const items = (snap.items || []).filter(i => i.e >= now);
+  list.innerHTML = items.length
+    ? items.map(i => {
+        const ld = i.k === 'lesson' ? lessonDay(i.dt) : '';
+        const when = i.k === 'lesson' ? (ld ? `<span class="when">${esc(ld)}</span>` : '') : `<span class="when">${esc(daysLabel(i.dt))}</span>`;
+        return `<div class="it"><b>${esc(i.a)}</b>${when}${i.b ? `<span>${esc(i.b)}</span>` : ''}</div>`;
+      }).join('')
+    : `<div class="empty">${esc(snap.empty || 'Пусто')}</div>`;
+  document.getElementById('foot').textContent = now - snap.gen > 6 * 36e5 ? 'данные от ' + hm(snap.gen) : '';
+}
+document.getElementById('close').onclick = () => widgetApi.close();
+document.getElementById('list').onclick = () => widgetApi.openApp();
+widgetApi.onData(d => { snap = d; draw(); });
+widgetApi.get().then(d => { if (d) snap = d; draw(); });
+setInterval(draw, 30000);
+draw();
+</script>
+</body>
+</html>

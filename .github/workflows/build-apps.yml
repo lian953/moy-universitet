@@ -24,6 +24,7 @@ jobs:
           cp index.html manifest.webmanifest native/desktop/www/
           cp -r icons native/desktop/www/icons
           cp icons/icon-512.png native/desktop/build/icon.png
+          cp native/desktop/widget.html native/desktop/www/widget.html
       - name: Вставить ключ Google для компьютера (из секретов репозитория)
         shell: bash
         env:
@@ -65,6 +66,7 @@ jobs:
           npx cap add android
           npx capacitor-assets generate --android || true
           python3 make_manifest.py
+          python3 add_widget.py
           npx cap sync android
       - name: Собрать APK
         working-directory: native/mobile/android

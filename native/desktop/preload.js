@@ -4,3 +4,7 @@ contextBridge.exposeInMainWorld('desktopAuth', {
   refresh: ()   => ipcRenderer.invoke('gauth:refresh'),
   logout:  ()   => ipcRenderer.invoke('gauth:logout')
 });
+contextBridge.exposeInMainWorld('desktopWidget', {
+  update:   (snap, open) => ipcRenderer.send('widget:update', snap, !!open),
+  onClosed: cb => ipcRenderer.on('widget:closed', () => cb())
+});

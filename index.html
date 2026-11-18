@@ -582,6 +582,7 @@ const todayIdx = () => (new Date().getDay() + 6) % 7;   // Пн = 0 ... Вс = 6
 const LEGACY_NOTE_HASHES = [544718499, 201857429, 1130997903, 471385851];
 const textHash = t => { let x = 5381; for (const c of String(t)) x = ((x << 5) + x + c.charCodeAt(0)) | 0; return x; };
 
+const WIDGET_TYPES = [['next', 'Ближайшая пара'], ['today', 'Расписание на сегодня'], ['deadlines', 'Ближайшие дедлайны'], ['exam', 'Сессия: до экзамена']];
 function load(){
   try {
     const raw = localStorage.getItem(KEY);
@@ -610,6 +611,9 @@ function normalize(s){
   // dirty — есть изменения, ещё не отправленные на Диск, conflict — версии на Диске и здесь разошлись
   s.settings.drive = Object.assign({ connected:false, email:'', name:'', auto:true,
     lastSync:'', lastRemote:'', dirty:false, conflict:false }, s.settings.drive);
+  // Виджет: type — что показывать, open — окошко виджета на компьютере включено (на каждом устройстве своё)
+  s.settings.widget = Object.assign({ type:'next', open:false }, s.settings.widget);
+  if (!WIDGET_TYPES.some(w => w[0] === s.settings.widget.type)) s.settings.widget.type = 'next';
   s.reminded = s.reminded || {};   // о чём уже напомнили, чтобы не повторять
   s.alerts   = s.alerts   || [];   // напоминания, которые показаны в приложении
   s.subjects = (s.subjects || []).map(x => Object.assign({ notes:'', links:[], files:[], grades:[] }, x));
@@ -693,6 +697,7 @@ function renderAll(){
   document.documentElement.dataset.theme = state.settings.theme;
   $('#today').textContent = new Date().toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
   renderHero(); renderAlerts(); renderWeek(); renderTasks(); renderCalendar(); renderSubjects(); renderSettings(); showTab();
+  if (typeof widgetPush === 'function') widgetPush();
 }
 
 /* ---------- Шапка: дата и три плитки ---------- */
@@ -1269,7 +1274,7 @@ async function driveLocate(){
 // Что именно кладём на Диск. Не берём настройки этого устройства (вход, тема) и служебное.
 function drivePayload(){
   const copy = JSON.parse(JSON.stringify(state));
-  delete copy.settings.drive; delete copy.settings.theme;
+  delete copy.settings.drive; delete copy.settings.theme; delete copy.settings.widget;
   copy.alerts = []; copy.reminded = {};
   return { format:'moy-universitet', v:1, savedAt:new Date().toISOString(), state:copy };
 }
@@ -1294,9 +1299,9 @@ async function drivePull(loc){
   const incoming = obj.state || obj;
   if (!incoming || !Array.isArray(incoming.subjects) || !Array.isArray(incoming.lessons) || !Array.isArray(incoming.tasks))
     throw new Error('Файл на Диске не похож на данные приложения');
-  const keep = { drive:driveCfg(), theme:state.settings.theme, alerts:state.alerts, reminded:state.reminded };
+  const keep = { drive:driveCfg(), theme:state.settings.theme, widget:state.settings.widget, alerts:state.alerts, reminded:state.reminded };
   state = normalize(incoming);
-  state.settings.drive = keep.drive; state.settings.theme = keep.theme; state.alerts = keep.alerts; state.reminded = keep.reminded;
+  state.settings.drive = keep.drive; state.settings.theme = keep.theme; state.settings.widget = keep.widget; state.alerts = keep.alerts; state.reminded = keep.reminded;
   Object.assign(state.settings.drive, { lastRemote:loc.file.modifiedTime, dirty:false, conflict:false, lastSync:new Date().toISOString() });
   openSubject = null; saveQuiet(); renderAll();
 }
@@ -1843,6 +1848,74 @@ function notifyBlock(){
 }
 
 /* ---------- Ещё (настройки и резервная копия) ---------- */
+/* =========================================================
+   ВИДЖЕТ: данные для окошка на компьютере и виджета на главном экране Android
+   Приложение собирает «снимок» (что показать) и отдаёт его оболочке; сам виджет только рисует.
+   ========================================================= */
+const WIDGET_MAX = 6;
+const atMs = (dateISO, hm) => new Date(dateISO + 'T' + (hm || '00:00') + ':00').getTime();
+function widgetData(){
+  const type = state.settings.widget.type, now = Date.now(), nowD = new Date();
+  const todayISO = iso(nowD), endToday = atMs(todayISO, '23:59');
+  const typeName = (WIDGET_TYPES.find(w => w[0] === type) || WIDGET_TYPES[0])[1];
+  const lessonsFor = days => {
+    const out = [];
+    for (let i = 0; i < days; i++){
+      const d = new Date(nowD); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + i);
+      const di = iso(d), idx = (d.getDay() + 6) % 7;
+      if ((state.dayoffs || []).some(x => (x.date || x) === di)) continue;
+      state.lessons.filter(l => lessonOn(l, di, idx)).sort((a, b) => a.start.localeCompare(b.start)).forEach(l => {
+        out.push({ s:atMs(di, l.start), e:atMs(di, l.end), a:subj(l.subjectId).name,
+                   b:[l.start + '–' + l.end, l.room, l.kind].filter(Boolean).join(' · '), k:'lesson', dt:di });
+      });
+    }
+    return out.filter(x => x.e >= now).sort((a, b) => a.s - b.s);
+  };
+  let items = [], empty = '';
+  if (type === 'next'){ items = lessonsFor(8).slice(0, 3); empty = 'Ближайших пар нет'; }
+  else if (type === 'today'){ items = lessonsFor(1).slice(0, WIDGET_MAX); empty = 'Сегодня больше нет пар'; }
+  else if (type === 'deadlines'){
+    items = state.tasks.filter(t => !t.done && t.due).sort((a, b) => a.due.localeCompare(b.due)).slice(0, WIDGET_MAX)
+      .map(t => ({ s:atMs(t.due, '00:00'), e:Math.max(atMs(t.due, '23:59'), endToday), a:t.title,
+                   b:subj(t.subjectId).name, k:'task', dt:t.due }));
+    empty = 'Дедлайнов нет';
+  } else {
+    items = state.exams.filter(e => e.date && !e.passed && e.date >= todayISO).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).slice(0, 4)
+      .map(e => ({ s:atMs(e.date, e.time || '00:00'), e:Math.max(atMs(e.date, '23:59'), endToday),
+                   a:(EXAM_KIND[e.kind] || 'Экзамен') + ': ' + e.title, b:[e.time, e.room].filter(Boolean).join(' · '), k:'exam', dt:e.date }));
+    empty = 'Экзаменов пока нет';
+  }
+  return { v:1, type, typeName, theme:state.settings.theme, gen:now, empty, items };
+}
+const androidWidget = () => {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  if (!(C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin)) return null;
+  try { return C.registerPlugin('WidgetBridge'); } catch(_) { return null; }
+};
+const desktopWidget = () => (typeof window !== 'undefined' && window.desktopWidget) || null;
+let widgetTimer = null;
+function widgetPush(){
+  clearTimeout(widgetTimer);
+  widgetTimer = setTimeout(() => {
+    try {
+      const snap = widgetData(), dw = desktopWidget(), aw = androidWidget();
+      if (dw) dw.update(snap, !!state.settings.widget.open);
+      if (aw) aw.update({ json:JSON.stringify(snap) }).catch(() => {});
+    } catch(_) {}
+  }, 500);
+}
+function widgetBlock(){
+  const dw = desktopWidget(), aw = androidWidget(), w = state.settings.widget;
+  const types = `<div class="seg">` + WIDGET_TYPES.map(([k, t]) =>
+    `<button data-act="wtype" data-id="${k}" class="${w.type === k ? 'on' : ''}">${esc(t)}</button>`).join('') + `</div>`;
+  if (dw) return `<h3>Виджет</h3><p class="empty">Маленькое окошко поверх окон. Его можно перетащить на рабочий стол и закрепить в углу.</p>${types}
+     <div class="seg"><button data-act="wtoggle">${w.open ? 'Скрыть окошко' : 'Показать окошко'}</button></div>`;
+  if (aw) return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона. Выбери, что он показывает, и добавь его.</p>${types}
+     <div class="seg"><button data-act="wpin">Добавить на главный экран</button></div>
+     <p class="empty">Если кнопка не сработала: долгое нажатие на главном экране → «Виджеты» → «Мой универ».</p>`;
+  return `<h3>Виджет</h3><p class="empty">Виджет на главном экране телефона и окошко на рабочем столе есть в приложениях для Android и Windows. Выбранный здесь тип запомнится в них отдельно.</p>`;
+}
+
 function renderSettings(){
   const th = state.settings.theme, grp = state.settings.group;
   const groups = [...new Set(state.lessons.flatMap(l => l.groups || []))].sort();
@@ -1856,6 +1929,8 @@ function renderSettings(){
         .map(([k,t]) => `<button data-act="theme" data-id="${k}" class="${th===k?'on':''}">${t}</button>`).join('') + `</div>
 
      ${notifyBlock()}
+
+     ${widgetBlock()}
 
      ${driveBlock()}
 
@@ -2042,6 +2117,9 @@ document.addEventListener('click', e => {
   }
   else if (act === 'showdone') { state.settings.showDone = (id === '1'); commit(); }
   else if (act === 'theme')    { state.settings.theme = id; commit(); }
+  else if (act === 'wtype')    { if (WIDGET_TYPES.some(w => w[0] === id)){ state.settings.widget.type = id; saveQuiet(); renderAll(); widgetPush(); } }
+  else if (act === 'wtoggle')  { state.settings.widget.open = !state.settings.widget.open; saveQuiet(); renderAll(); widgetPush(); }
+  else if (act === 'wpin')     { const aw = androidWidget(); if (aw) aw.pin().then(r => toast(r && r.requested ? 'Подтверди добавление на главном экране' : 'Добавь виджет вручную: долгое нажатие на главном экране → «Виджеты»')).catch(() => toast('Добавь виджет вручную: долгое нажатие на главном экране → «Виджеты»')); }
   else if (act === 'addlesson'){ lessonForm(null, id); }
   else if (act === 'group'){ state.settings.group = id; commit(); }
   else if (act === 'opensearch'){ openSearch(); }
@@ -2218,10 +2296,14 @@ document.addEventListener('change', e => {
   commit(); checkReminders();
 });
 
+// Окошко виджета на компьютере закрыли кнопкой × в самом окошке
+{ const dw = desktopWidget(); if (dw && dw.onClosed) dw.onClosed(() => { state.settings.widget.open = false; saveQuiet(); renderAll(); }); }
+
 renderAll();
 checkReminders();
 if (driveCfg().connected) driveRun('auto', true);       // при открытии сверяемся с Диском
 setInterval(checkReminders, 60000);                                   // проверяем каждую минуту
+setInterval(widgetPush, 10 * 60000);                                  // виджет освежаем раз в 10 минут
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
 </script>
 </body>

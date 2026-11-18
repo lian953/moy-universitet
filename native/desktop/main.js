@@ -2,6 +2,7 @@
 // Страница открывается по адресу http://localhost:47821 (так, как её ждёт вход Google), а не как файл.
 const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const gauth = require('./gauth');
+const widget = require('./widget');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -39,9 +40,11 @@ ipcMain.handle('gauth:login', (_e, hint) => gauth.login(String(hint || '')).catc
 ipcMain.handle('gauth:refresh', () => gauth.refresh());
 ipcMain.handle('gauth:logout', () => gauth.logout());
 
-let win;
-async function createWindow(){
-  const served = await startServer();
+let win = null, served = false;
+const pageUrl = file => 'http://localhost:' + PORT + '/' + file;
+function loadPage(w, file){ if (served) w.loadURL(pageUrl(file)); else w.loadFile(path.join(ROOT, file)); }
+
+function createWindow(){
   win = new BrowserWindow({
     width: 1100, height: 820, minWidth: 360, minHeight: 560,
     title: 'Мой универ', backgroundColor: '#f0f0f6', autoHideMenuBar: true,
@@ -55,13 +58,28 @@ async function createWindow(){
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
-  if (served) win.loadURL('http://localhost:' + PORT + '/index.html');
-  else win.loadFile(path.join(ROOT, 'index.html'));
+  win.on('closed', () => { win = null; });
+  loadPage(win, 'index.html');
+}
+function showMain(){
+  if (!win) return createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show(); win.focus();
 }
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', () => { if (win){ if (win.isMinimized()) win.restore(); win.focus(); } });
-  app.whenReady().then(createWindow);
+  app.on('second-instance', showMain);
+  app.whenReady().then(async () => {
+    served = await startServer();
+    widget.setup({
+      load: loadPage,
+      showMain,
+      notifyMain: ch => { if (win && !win.isDestroyed()) win.webContents.send(ch); }
+    });
+    createWindow();
+    widget.restore();
+  });
+  // Приложение закрывается, когда закрыты и главное окно, и окошко виджета
   app.on('window-all-closed', () => app.quit());
 }
