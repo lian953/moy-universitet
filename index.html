@@ -558,6 +558,20 @@ label.attach.dis{opacity:.6; cursor:default; pointer-events:none}
 </dialog>
 
 <script>
+// Показываем причину прямо на экране, чтобы её можно было сфотографировать (вместо молчаливой пустой страницы)
+function showFatal(msg){
+  try {
+    let b = document.getElementById('fatalBar');
+    if (!b){ b = document.createElement('div'); b.id = 'fatalBar';
+      b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:9999;background:var(--card,#fff);color:var(--text,#222);border:1px solid #d33;border-radius:16px;padding:10px 14px;font:12px/1.4 Manrope,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.2)';
+      document.body.appendChild(b); }
+    b.textContent = 'Ошибка: ' + String(msg).slice(0, 300);
+  } catch(_) {}
+}
+window.addEventListener('error', e => showFatal((e.message || 'ошибка') + (e.lineno ? ' (строка ' + e.lineno + ')' : '')));
+window.addEventListener('unhandledrejection', e => showFatal('promise: ' + (e.reason && e.reason.message || e.reason)));
+</script>
+<script>
 /* =========================================================
    1. ДАННЫЕ
    Всё хранится в браузере (localStorage) в одном объекте state:
@@ -582,6 +596,7 @@ const todayIdx = () => (new Date().getDay() + 6) % 7;   // Пн = 0 ... Вс = 6
 const LEGACY_NOTE_HASHES = [544718499, 201857429, 1130997903, 471385851];
 const textHash = t => { let x = 5381; for (const c of String(t)) x = ((x << 5) + x + c.charCodeAt(0)) | 0; return x; };
 
+const WIDGET_TYPES = [['next', 'Ближайшая пара'], ['today', 'Расписание на сегодня'], ['deadlines', 'Ближайшие дедлайны'], ['exam', 'Сессия: до экзамена']];
 function load(){
   try {
     const raw = localStorage.getItem(KEY);
@@ -610,6 +625,9 @@ function normalize(s){
   // dirty — есть изменения, ещё не отправленные на Диск, conflict — версии на Диске и здесь разошлись
   s.settings.drive = Object.assign({ connected:false, email:'', name:'', auto:true,
     lastSync:'', lastRemote:'', dirty:false, conflict:false }, s.settings.drive);
+  // Виджет: type — что показывать, open — окошко виджета на компьютере включено (на каждом устройстве своё)
+  s.settings.widget = Object.assign({ type:'next', open:false }, s.settings.widget);
+  if (!WIDGET_TYPES.some(w => w[0] === s.settings.widget.type)) s.settings.widget.type = 'next';
   s.reminded = s.reminded || {};   // о чём уже напомнили, чтобы не повторять
   s.alerts   = s.alerts   || [];   // напоминания, которые показаны в приложении
   s.subjects = (s.subjects || []).map(x => Object.assign({ notes:'', links:[], files:[], grades:[] }, x));
@@ -692,7 +710,11 @@ function dueLabel(due){
 function renderAll(){
   document.documentElement.dataset.theme = state.settings.theme;
   $('#today').textContent = new Date().toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
-  renderHero(); renderAlerts(); renderWeek(); renderTasks(); renderCalendar(); renderSubjects(); renderSettings(); showTab();
+  // Каждый кусок рисуется отдельно: сбой в одном месте не должен оставлять остальное приложение пустым
+  [renderHero, renderAlerts, renderWeek, renderTasks, renderCalendar, renderSubjects, renderSettings, showTab].forEach(fn => {
+    try { fn(); } catch(err) { showFatal(fn.name + ': ' + (err && err.message || err)); }
+  });
+  try { if (typeof widgetPush === 'function') widgetPush(); } catch(err) { showFatal('widget: ' + (err && err.message || err)); }
 }
 
 /* ---------- Шапка: дата и три плитки ---------- */
@@ -1269,7 +1291,7 @@ async function driveLocate(){
 // Что именно кладём на Диск. Не берём настройки этого устройства (вход, тема) и служебное.
 function drivePayload(){
   const copy = JSON.parse(JSON.stringify(state));
-  delete copy.settings.drive; delete copy.settings.theme;
+  delete copy.settings.drive; delete copy.settings.theme; delete copy.settings.widget;
   copy.alerts = []; copy.reminded = {};
   return { format:'moy-universitet', v:1, savedAt:new Date().toISOString(), state:copy };
 }
@@ -1294,9 +1316,9 @@ async function drivePull(loc){
   const incoming = obj.state || obj;
   if (!incoming || !Array.isArray(incoming.subjects) || !Array.isArray(incoming.lessons) || !Array.isArray(incoming.tasks))
     throw new Error('Файл на Диске не похож на данные приложения');
-  const keep = { drive:driveCfg(), theme:state.settings.theme, alerts:state.alerts, reminded:state.reminded };
+  const keep = { drive:driveCfg(), theme:state.settings.theme, widget:state.settings.widget, alerts:state.alerts, reminded:state.reminded };
   state = normalize(incoming);
-  state.settings.drive = keep.drive; state.settings.theme = keep.theme; state.alerts = keep.alerts; state.reminded = keep.reminded;
+  state.settings.drive = keep.drive; state.settings.theme = keep.theme; state.settings.widget = keep.widget; state.alerts = keep.alerts; state.reminded = keep.reminded;
   Object.assign(state.settings.drive, { lastRemote:loc.file.modifiedTime, dirty:false, conflict:false, lastSync:new Date().toISOString() });
   openSubject = null; saveQuiet(); renderAll();
 }
@@ -1709,7 +1731,7 @@ const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: stan
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; renderSettings(); });
 window.addEventListener('appinstalled', () => { installEvt = null; toast('Приложение установлено'); renderSettings(); });
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol))
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.desktopAuth)   // в оболочке для ПК кеш не нужен: сервер локальный
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 
 function installBlock(){
@@ -1926,6 +1948,8 @@ function renderSettings(){
 
      ${notifyBlock()}
 
+     ${widgetBlock()}
+
      ${driveBlock()}
 
      ${installBlock()}
@@ -2111,6 +2135,9 @@ document.addEventListener('click', e => {
   }
   else if (act === 'showdone') { state.settings.showDone = (id === '1'); commit(); }
   else if (act === 'theme')    { state.settings.theme = id; commit(); }
+  else if (act === 'wtype')    { if (WIDGET_TYPES.some(w => w[0] === id)){ state.settings.widget.type = id; saveQuiet(); renderAll(); widgetPush(); } }
+  else if (act === 'wtoggle')  { state.settings.widget.open = !state.settings.widget.open; saveQuiet(); renderAll(); widgetPush(); }
+  else if (act === 'wpin')     { const aw = androidWidget(); if (aw) aw.pin().then(r => toast(r && r.requested ? 'Подтверди добавление на главном экране' : 'Добавь виджет вручную: долгое нажатие на главном экране → «Виджеты»')).catch(() => toast('Добавь виджет вручную: долгое нажатие на главном экране → «Виджеты»')); }
   else if (act === 'addlesson'){ lessonForm(null, id); }
   else if (act === 'group'){ state.settings.group = id; commit(); }
   else if (act === 'opensearch'){ openSearch(); }
@@ -2294,6 +2321,7 @@ renderAll();
 checkReminders();
 if (driveCfg().connected) driveRun('auto', true);       // при открытии сверяемся с Диском
 setInterval(checkReminders, 60000);                                   // проверяем каждую минуту
+setInterval(widgetPush, 10 * 60000);                                  // виджет освежаем раз в 10 минут
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
 </script>
 </body>

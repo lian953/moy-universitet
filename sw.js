@@ -1,6 +1,6 @@
 // Служебный скрипт приложения «Мой универ»: хранит копию страницы, чтобы она открывалась без интернета.
 // Твои данные (расписание, задания, оценки) лежат в самом браузере и от этого скрипта не зависят.
-const VERSION = 'muni-v1';
+const VERSION = 'muni-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
